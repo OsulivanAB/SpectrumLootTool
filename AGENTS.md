@@ -3,7 +3,7 @@
 ## Project Goal
 
 - Track how many "Best-in-Slot" rolls each member has available.
-- Be available to all Spectrum Federation members.
+- Be available to all Spectrum Federation (US-Garona) members.
 - Allow only officers to increase or decrease Best-in-Slot rolls for any member.
 - Data must sync in real time across the raid group efficiently, minimizing game impact.
 - Update data for members who miss a raid when they return, using data from other raid group members.

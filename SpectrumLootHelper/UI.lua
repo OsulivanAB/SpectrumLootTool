@@ -17,3 +17,22 @@ function SLH:CreateMainFrame()
     self.frame = frame
     return frame
 end
+
+-- Create a simple settings panel with a toggle to allow operation outside raids
+function SLH:CreateOptions()
+    if self.optionsPanel then return end
+
+    local panel = CreateFrame("Frame")
+    panel.name = "Spectrum Loot Helper"
+
+    local checkbox = CreateFrame("CheckButton", nil, panel, "InterfaceOptionsCheckButtonTemplate")
+    checkbox:SetPoint("TOPLEFT", 16, -16)
+    checkbox.Text:SetText("Enable outside raid groups")
+    checkbox:SetChecked(self.db.settings.allowOutsideRaid)
+    checkbox:SetScript("OnClick", function(btn)
+        SLH.db.settings.allowOutsideRaid = btn:GetChecked()
+    end)
+
+    self.optionsPanel = panel
+    InterfaceOptions_AddCategory(panel)
+end

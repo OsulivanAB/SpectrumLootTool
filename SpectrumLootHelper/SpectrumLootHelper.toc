@@ -1,0 +1,10 @@
+## Interface: 100207
+## Title: Spectrum Loot Helper
+## Notes: Track Best-in-Slot rolls for Spectrum Federation
+## Author: Spectrum Federation
+## Version: 0.1.0
+## SavedVariables: SpectrumLootHelperDB
+
+Core.lua
+Sync.lua
+UI.lua

@@ -31,6 +31,13 @@ function SLH:CreateOptions()
     checkbox:SetChecked(self.db.settings.allowOutsideRaid)
     checkbox:SetScript("OnClick", function(btn)
         SLH.db.settings.allowOutsideRaid = btn:GetChecked()
+        if SLH.frame then
+            if SLH:IsEnabled() then
+                SLH.frame:Show()
+            else
+                SLH.frame:Hide()
+            end
+        end
     end)
 
     self.optionsPanel = panel

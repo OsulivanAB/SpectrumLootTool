@@ -73,14 +73,34 @@ function SLH:UpdateRoster()
             row:SetSize(180, 20)
             row.nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             row.nameText:SetPoint("LEFT")
+            row.upButton = CreateFrame("Button", nil, row, "UIPanelScrollUpButtonTemplate")
+            row.upButton:SetSize(16, 16)
+            row.upButton:SetPoint("RIGHT", row, "RIGHT", -2, 6)
+            row.downButton = CreateFrame("Button", nil, row, "UIPanelScrollDownButtonTemplate")
+            row.downButton:SetSize(16, 16)
+            row.downButton:SetPoint("RIGHT", row, "RIGHT", -2, -6)
             row.valueText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            row.valueText:SetPoint("RIGHT")
+            row.valueText:SetPoint("RIGHT", row.upButton, "LEFT", -2, 0)
             frame.rows[i] = row
         end
         row:SetPoint("TOPLEFT", 10, -30 - (i - 1) * 20)
         local color = RAID_CLASS_COLORS[info.class] or { r = 1, g = 1, b = 1 }
         row.nameText:SetText(info.name)
         row.nameText:SetTextColor(color.r, color.g, color.b)
+        row.playerName = info.name
+        row.upButton:SetScript("OnClick", function()
+            SLH:AdjustRoll(row.playerName, 1, UnitName("player"))
+        end)
+        row.downButton:SetScript("OnClick", function()
+            SLH:AdjustRoll(row.playerName, -1, UnitName("player"))
+        end)
+        if SLH:IsOfficer("player") then
+            row.upButton:Show()
+            row.downButton:Show()
+        else
+            row.upButton:Hide()
+            row.downButton:Hide()
+        end
         row.valueText:SetText(SLH.db.rolls[info.name] or 0)
         row:Show()
     end

@@ -1,7 +1,7 @@
 local ADDON_NAME, SLH = ...
 
 SLH.version = "0.1.6"
-SLH.OFFICER_RANK = 2 -- configurable officer rank threshold
+SLH.OFFICER_RANK = 3 -- configurable officer rank threshold
 
 -- Initialize saved variables and basic database
 function SLH:Init()

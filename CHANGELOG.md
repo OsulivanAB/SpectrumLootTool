@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.3 - Options category visible
+- Registered addon options with the modern Settings API so it appears under Options > AddOns.
+
 ## 0.1.2 - Root addon folder
 - Moved addon `.toc` and Lua files to the repository root so the game detects the addon when cloned.
 

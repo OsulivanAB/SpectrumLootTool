@@ -18,7 +18,7 @@ directory contains the addon's `.toc` and Lua files.
 - Use `/slh` in-game to toggle the addon window.
 - Officer rank threshold can be edited in `Core.lua` via `OFFICER_RANK`.
 - Roll count changes automatically sync with other raid members.
-- In the Blizzard Interface Options, enable **Outside Raid** to use the addon while not in a raid group.
+- In-game, open **Options > AddOns > Spectrum Loot Helper** and enable **Outside Raid** to use the addon while not in a raid group.
 
 ## Development
 

@@ -19,6 +19,7 @@ directory contains the addon's `.toc` and Lua files.
 - Officer rank threshold can be edited in `Core.lua` via `OFFICER_RANK`.
 - Roll count changes automatically sync with other raid members.
 - In-game, open **Options > AddOns > Spectrum Loot Helper** and enable **Outside Raid** to use the addon while not in a raid group.
+- Unlock the frame in **Options > AddOns > Spectrum Loot Helper** to drag it to a preferred position. The addon remembers where you place it.
 
 ## Development
 

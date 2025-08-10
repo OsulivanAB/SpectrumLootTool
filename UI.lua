@@ -6,9 +6,24 @@ function SLH:CreateMainFrame()
 
     local frame = CreateFrame("Frame", "SpectrumLootHelperFrame", UIParent, "BackdropTemplate")
     frame:SetSize(200, 80)
-    frame:SetPoint("CENTER")
+    local pos = self.db.settings.position
+    frame:SetPoint(pos.point, UIParent, pos.point, pos.x, pos.y)
     frame:SetBackdrop({ bgFile = "Interface/Tooltips/UI-Tooltip-Background" })
     frame:SetBackdropColor(0, 0, 0, 0.7)
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetClampedToScreen(true)
+    frame:SetScript("OnDragStart", function(f)
+        if not SLH.db.settings.locked then
+            f:StartMoving()
+        end
+    end)
+    frame:SetScript("OnDragStop", function(f)
+        f:StopMovingOrSizing()
+        local point, _, _, x, y = f:GetPoint()
+        SLH.db.settings.position = { point = point, x = x, y = y }
+    end)
 
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOP", 0, -10)
@@ -38,6 +53,14 @@ function SLH:CreateOptions()
                 SLH.frame:Hide()
             end
         end
+    end)
+
+    local lockCheckbox = CreateFrame("CheckButton", nil, panel, "InterfaceOptionsCheckButtonTemplate")
+    lockCheckbox:SetPoint("TOPLEFT", checkbox, "BOTTOMLEFT", 0, -8)
+    lockCheckbox.Text:SetText("Lock frame position")
+    lockCheckbox:SetChecked(self.db.settings.locked)
+    lockCheckbox:SetScript("OnClick", function(btn)
+        SLH.db.settings.locked = btn:GetChecked()
     end)
 
     self.optionsPanel = panel

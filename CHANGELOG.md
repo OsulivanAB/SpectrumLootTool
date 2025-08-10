@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.2 - Root addon folder
+- Moved addon `.toc` and Lua files to the repository root so the game detects the addon when cloned.
+
 ## 0.1.1 - Added outside raid toggle
 - Added settings option to enable the addon outside raid groups.
 - Core logic now disables the UI unless in a raid and out of combat.

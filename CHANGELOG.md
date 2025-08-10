@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.4 - Conditional frame visibility
+- Main UI frame hides only during combat or when outside raids without the override setting.
+
 ## 0.1.3 - Options category visible
 - Registered addon options with the modern Settings API so it appears under Options > AddOns.
 

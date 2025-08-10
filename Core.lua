@@ -1,6 +1,6 @@
 local ADDON_NAME, SLH = ...
 
-SLH.version = "0.1.3"
+SLH.version = "0.1.4"
 SLH.OFFICER_RANK = 2 -- configurable officer rank threshold
 
 -- Initialize saved variables and basic database
@@ -54,14 +54,21 @@ end
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("GROUP_ROSTER_UPDATE")
 frame:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" and arg1 == ADDON_NAME then
         SLH:Init()
+        local f = SLH:CreateMainFrame()
+        if SLH:IsEnabled() then f:Show() else f:Hide() end
         print("|cff00ff00Spectrum Loot Helper loaded|r")
-    elseif event == "PLAYER_REGEN_DISABLED" or event == "GROUP_ROSTER_UPDATE" then
-        if SLH.frame and not SLH:IsEnabled() then
-            SLH.frame:Hide()
+    elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" or event == "GROUP_ROSTER_UPDATE" then
+        if SLH.frame then
+            if SLH:IsEnabled() then
+                SLH.frame:Show()
+            else
+                SLH.frame:Hide()
+            end
         end
     end
 end)

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.7 - Officer adjustment buttons
+- Officers now have up and down arrow buttons to modify each player's roll count from the main UI.
+
 ## 0.1.6 - Solo roster display
 - UI now shows the player's own entry when not in a raid and the outside raid option is enabled.
 - Roster automatically refreshes when group membership or roll counts change.

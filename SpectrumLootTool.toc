@@ -2,7 +2,7 @@
 ## Title: Spectrum Loot Helper
 ## Notes: Track Best-in-Slot rolls for Spectrum Federation
 ## Author: Spectrum Federation
-## Version: 0.1.4
+## Version: 0.1.5
 ## SavedVariables: SpectrumLootHelperDB
 
 Core.lua

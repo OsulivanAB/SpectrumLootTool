@@ -1,14 +1,17 @@
 local ADDON_NAME, SLH = ...
 
-SLH.version = "0.1.4"
+SLH.version = "0.1.5"
 SLH.OFFICER_RANK = 2 -- configurable officer rank threshold
 
 -- Initialize saved variables and basic database
 function SLH:Init()
-    SpectrumLootHelperDB = SpectrumLootHelperDB or { rolls = {}, log = {}, settings = { allowOutsideRaid = false } }
+    SpectrumLootHelperDB = SpectrumLootHelperDB or { rolls = {}, log = {}, settings = {} }
     self.db = SpectrumLootHelperDB
     -- ensure settings table exists
-    self.db.settings = self.db.settings or { allowOutsideRaid = false }
+    self.db.settings = self.db.settings or {}
+    if self.db.settings.allowOutsideRaid == nil then self.db.settings.allowOutsideRaid = false end
+    if self.db.settings.locked == nil then self.db.settings.locked = true end
+    self.db.settings.position = self.db.settings.position or { point = "CENTER", x = 0, y = 0 }
     if self.Sync then
         self.Sync:Request()
     end

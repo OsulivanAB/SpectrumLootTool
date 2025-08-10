@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5 - Movable frame
+- Frame position can be locked or unlocked and dragged around the screen.
+- Saved user-chosen frame position between sessions.
+
 ## 0.1.4 - Conditional frame visibility
 - Main UI frame hides only during combat or when outside raids without the override setting.
 

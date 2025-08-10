@@ -34,5 +34,10 @@ function SLH:CreateOptions()
     end)
 
     self.optionsPanel = panel
-    InterfaceOptions_AddCategory(panel)
+    if Settings and Settings.RegisterCanvasLayoutCategory then
+        local category = Settings.RegisterCanvasLayoutCategory(panel, panel.name, panel.name)
+        Settings.RegisterAddOnCategory(category)
+    else
+        InterfaceOptions_AddCategory(panel)
+    end
 end

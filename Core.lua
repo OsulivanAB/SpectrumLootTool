@@ -1,6 +1,6 @@
 local ADDON_NAME, SLH = ...
 
-SLH.version = "0.1.5"
+SLH.version = "0.1.6"
 SLH.OFFICER_RANK = 2 -- configurable officer rank threshold
 
 -- Initialize saved variables and basic database
@@ -51,6 +51,9 @@ function SLH:AdjustRoll(playerName, delta, officer)
     if self.Sync then
         self.Sync:Broadcast()
     end
+    if self.frame then
+        self:UpdateRoster()
+    end
 end
 
 -- Event handling
@@ -64,6 +67,7 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         SLH:Init()
         local f = SLH:CreateMainFrame()
         if SLH:IsEnabled() then f:Show() else f:Hide() end
+        if f:IsShown() then SLH:UpdateRoster() end
         print("|cff00ff00Spectrum Loot Helper loaded|r")
     elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" or event == "GROUP_ROSTER_UPDATE" then
         if SLH.frame then
@@ -71,6 +75,9 @@ frame:SetScript("OnEvent", function(_, event, arg1)
                 SLH.frame:Show()
             else
                 SLH.frame:Hide()
+            end
+            if SLH.frame:IsShown() then
+                SLH:UpdateRoster()
             end
         end
     end
@@ -84,5 +91,10 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function()
         return
     end
     local f = SLH:CreateMainFrame()
-    if f:IsShown() then f:Hide() else f:Show() end
+    if f:IsShown() then
+        f:Hide()
+    else
+        f:Show()
+        SLH:UpdateRoster()
+    end
 end

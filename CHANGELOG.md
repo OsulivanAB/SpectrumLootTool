@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.12 - Log-based synchronization system
+- **Major rework**: Implemented log-based synchronization system
+- Changes are now synced as log entries rather than final values
+- Multiple players can make changes offline and sync properly when rejoining
+- Added RecalculateFromLog() function to rebuild values from complete log history
+- Added unique IDs to log entries to prevent duplicates during sync
+- Backward compatibility maintained for existing data
+
+## 0.1.11 - Improved data synchronization
+- Enhanced sync logic to trigger when players join/leave raid groups (GROUP_ROSTER_UPDATE)
+- Improved sync data handling to only update UI when data actually changes
+- Added sync trigger documentation to copilot instructions
+
+## 0.1.10 - Officer rank threshold adjustment
+- Changed officer rank threshold from 3 to 2 (now ranks 0-2 can use adjustment controls)
+- Updated documentation to reflect new officer permissions
+
+## 0.1.9 - Debug improvements and bug fixes
+- Added debug output to help troubleshoot officer permission issues
+- Updated version number in Core.lua to match .toc file
+- Fixed potential issue with guild rank detection for arrow button visibility
+
+## 0.1.8 - UI layout improvements
+- Changed up/down arrow buttons from vertical stack to side-by-side layout for better spacing and less cramped appearance.
+
 ## 0.1.7 - Officer adjustment buttons
 - Officers now have up and down arrow buttons to modify each player's roll count from the main UI.
 

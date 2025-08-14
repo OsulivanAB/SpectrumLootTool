@@ -75,12 +75,12 @@ function SLH:UpdateRoster()
             row.nameText:SetPoint("LEFT")
             row.upButton = CreateFrame("Button", nil, row, "UIPanelScrollUpButtonTemplate")
             row.upButton:SetSize(16, 16)
-            row.upButton:SetPoint("RIGHT", row, "RIGHT", -2, 6)
+            row.upButton:SetPoint("RIGHT", row, "RIGHT", -2, 0)
             row.downButton = CreateFrame("Button", nil, row, "UIPanelScrollDownButtonTemplate")
             row.downButton:SetSize(16, 16)
-            row.downButton:SetPoint("RIGHT", row, "RIGHT", -2, -6)
+            row.downButton:SetPoint("RIGHT", row.upButton, "LEFT", -2, 0)
             row.valueText = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            row.valueText:SetPoint("RIGHT", row.upButton, "LEFT", -2, 0)
+            row.valueText:SetPoint("RIGHT", row.downButton, "LEFT", -2, 0)
             frame.rows[i] = row
         end
         row:SetPoint("TOPLEFT", 10, -30 - (i - 1) * 20)
@@ -94,12 +94,23 @@ function SLH:UpdateRoster()
         row.downButton:SetScript("OnClick", function()
             SLH:AdjustRoll(row.playerName, -1, UnitName("player"))
         end)
+        
+        -- Debug: Check officer status
+        local isOfficer = SLH:IsOfficer("player")
+        local guild, _, rankIndex = GetGuildInfo("player")
+        
         if SLH:IsOfficer("player") then
             row.upButton:Show()
             row.downButton:Show()
         else
             row.upButton:Hide()
             row.downButton:Hide()
+            -- Debug output for troubleshooting
+            if guild then
+                print("SLT Debug: Guild='" .. guild .. "', Rank=" .. (rankIndex or "nil") .. ", Officer=" .. tostring(isOfficer))
+            else
+                print("SLT Debug: No guild data available")
+            end
         end
         row.valueText:SetText(SLH.db.rolls[info.name] or 0)
         row:Show()

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.15 - Added Addon Icon
+- **New Feature**: Added custom addon icon for better visual identification
+- **Icon Integration**: Updated TOC file to include IconTexture directive for addon managers
+- **File Management**: Renamed image file to standard `icon.png` format
+- **WowUp Enhancement**: Icon will now display in WowUp and other compatible addon managers
+
 ## 0.1.14 - Officer Arrow Visibility Fix
 - **Bug Fix**: Fixed issue where officer arrows (up/down buttons) were not showing for guild officers
 - **Improved Guild Detection**: Enhanced guild name matching to handle server suffixes (e.g., "Spectrum Federation - Garona")

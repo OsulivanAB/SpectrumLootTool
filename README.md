@@ -1,5 +1,7 @@
 # Spectrum Loot Helper
 
+![Spectrum Loot Helper Icon](icon.png)
+
 Spectrum Loot Helper tracks Best-in-Slot roll counts for the Spectrum Federation guild.
 
 ## Installation

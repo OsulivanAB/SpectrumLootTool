@@ -20,13 +20,17 @@ jobs:
           exit 1
         fi
         
-        # Extract version from TOC file
-        TOC_VERSION=$(grep "^## Version:" SpectrumLootTool.toc | sed 's/## Version: //')
+        # Extract version from TOC file and remove all whitespace/newlines
+        TOC_VERSION=$(grep "^## Version:" SpectrumLootTool.toc | sed 's/## Version: //' | tr -d '\n\r\t ' | sed 's/[[:space:]]*$//')
         echo "TOC Version: $TOC_VERSION"
         
-        # Extract version from Core.lua
-        CORE_VERSION=$(grep 'SLH.version = ' Core.lua | sed 's/.*SLH.version = "\(.*\)".*/\1/')
+        # Extract version from Core.lua and remove all whitespace/newlines
+        CORE_VERSION=$(grep 'SLH.version = ' Core.lua | sed 's/.*SLH.version = "\(.*\)".*/\1/' | tr -d '\n\r\t ' | sed 's/[[:space:]]*$//')
         echo "Core.lua Version: $CORE_VERSION"
+        
+        # Debug output with quotes to show any invisible characters
+        echo "TOC_VERSION='$TOC_VERSION'"
+        echo "CORE_VERSION='$CORE_VERSION'"
         
         # Check if versions match
         if [ "$TOC_VERSION" != "$CORE_VERSION" ]; then

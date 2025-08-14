@@ -1,6 +1,9 @@
 # VS Code settings
 .vscode/
 
+# Dev container configuration
+.devcontainer/
+
 # OS generated files
 .DS_Store
 .DS_Store?

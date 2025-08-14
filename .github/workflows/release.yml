@@ -26,13 +26,21 @@ jobs:
       run: |
         VERSION="${{ steps.extract_version.outputs.version }}"
         
-        # Extract version from TOC file
-        TOC_VERSION=$(grep "^## Version:" SpectrumLootTool.toc | sed 's/## Version: //')
+        # Extract version from TOC file and trim whitespace
+        TOC_VERSION=$(grep "^## Version:" SpectrumLootTool.toc | sed 's/## Version: //' | xargs)
         echo "TOC Version: $TOC_VERSION"
         
-        # Extract version from Core.lua
-        CORE_VERSION=$(grep 'SLH.version = ' Core.lua | sed 's/.*SLH.version = "\(.*\)".*/\1/')
+        # Extract version from Core.lua and trim whitespace
+        CORE_VERSION=$(grep 'SLH.version = ' Core.lua | sed 's/.*SLH.version = "\(.*\)".*/\1/' | xargs)
         echo "Core.lua Version: $CORE_VERSION"
+        
+        # Trim the tag version as well
+        VERSION=$(echo "$VERSION" | xargs)
+        
+        # Debug output with quotes to show any invisible characters
+        echo "VERSION='$VERSION'"
+        echo "TOC_VERSION='$TOC_VERSION'"
+        echo "CORE_VERSION='$CORE_VERSION'"
         
         # Check if all versions match
         if [ "$VERSION" != "$TOC_VERSION" ] || [ "$VERSION" != "$CORE_VERSION" ]; then
@@ -55,6 +63,7 @@ jobs:
         # Copy addon files (exclude dev/build files)
         cp *.toc "package/SpectrumLootTool/"
         cp *.lua "package/SpectrumLootTool/"
+        cp *.png "package/SpectrumLootTool/" 2>/dev/null || true  # Copy icon if exists
         cp README.md "package/SpectrumLootTool/"
         cp CHANGELOG.md "package/SpectrumLootTool/"
         

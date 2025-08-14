@@ -26,16 +26,16 @@ jobs:
       run: |
         VERSION="${{ steps.extract_version.outputs.version }}"
         
-        # Extract version from TOC file and trim whitespace
-        TOC_VERSION=$(grep "^## Version:" SpectrumLootTool.toc | sed 's/## Version: //' | xargs)
+        # Extract version from TOC file and remove all whitespace/newlines
+        TOC_VERSION=$(grep "^## Version:" SpectrumLootTool.toc | sed 's/## Version: //' | tr -d '\n\r\t ' | sed 's/[[:space:]]*$//')
         echo "TOC Version: $TOC_VERSION"
         
-        # Extract version from Core.lua and trim whitespace
-        CORE_VERSION=$(grep 'SLH.version = ' Core.lua | sed 's/.*SLH.version = "\(.*\)".*/\1/' | xargs)
+        # Extract version from Core.lua and remove all whitespace/newlines
+        CORE_VERSION=$(grep 'SLH.version = ' Core.lua | sed 's/.*SLH.version = "\(.*\)".*/\1/' | tr -d '\n\r\t ' | sed 's/[[:space:]]*$//')
         echo "Core.lua Version: $CORE_VERSION"
         
         # Trim the tag version as well
-        VERSION=$(echo "$VERSION" | xargs)
+        VERSION=$(echo "$VERSION" | tr -d '\n\r\t ' | sed 's/[[:space:]]*$//')
         
         # Debug output with quotes to show any invisible characters
         echo "VERSION='$VERSION'"

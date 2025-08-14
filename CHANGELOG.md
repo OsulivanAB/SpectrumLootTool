@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.13 - WowUp Compatibility and Automated Releases
+- **WowUp Integration**: Repository fully configured for WowUp addon manager distribution
+- **Automated Releases**: GitHub Actions workflows for CI validation and automated packaging
+- **Release Automation**: Helper scripts for streamlined version management and releases
+- **Enhanced Documentation**: Comprehensive setup guides and development workflows
+- **Version Validation**: Automated checks prevent version mismatches and broken releases
+- **ZIP Packaging**: Automated creation of WowUp-compatible release packages
+- **Installation Support**: Users can now install via WowUp using repository URL
+
 ## 0.1.12 - Log-based synchronization system
 - **Major rework**: Implemented log-based synchronization system
 - Changes are now synced as log entries rather than final values

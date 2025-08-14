@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.14 - Officer Arrow Visibility Fix
+- **Bug Fix**: Fixed issue where officer arrows (up/down buttons) were not showing for guild officers
+- **Improved Guild Detection**: Enhanced guild name matching to handle server suffixes (e.g., "Spectrum Federation - Garona")
+- **Better Error Handling**: Added defensive programming to prevent crashes when guild data is unavailable
+- **Code Cleanup**: Removed problematic debug output that wasn't displaying properly in chat
+
 ## 0.1.13 - WowUp Compatibility and Automated Releases
 - **WowUp Integration**: Repository fully configured for WowUp addon manager distribution
 - **Automated Releases**: GitHub Actions workflows for CI validation and automated packaging

@@ -95,23 +95,15 @@ function SLH:UpdateRoster()
             SLH:AdjustRoll(row.playerName, -1, UnitName("player"))
         end)
         
-        -- Debug: Check officer status
-        local isOfficer = SLH:IsOfficer("player")
-        local guild, _, rankIndex = GetGuildInfo("player")
-        
+        -- Check if player is an officer and show/hide arrows accordingly
         if SLH:IsOfficer("player") then
             row.upButton:Show()
             row.downButton:Show()
         else
             row.upButton:Hide()
             row.downButton:Hide()
-            -- Debug output for troubleshooting
-            if guild then
-                print("SLT Debug: Guild='" .. guild .. "', Rank=" .. (rankIndex or "nil") .. ", Officer=" .. tostring(isOfficer))
-            else
-                print("SLT Debug: No guild data available")
-            end
         end
+        
         row.valueText:SetText(SLH.db.rolls[info.name] or 0)
         row:Show()
     end

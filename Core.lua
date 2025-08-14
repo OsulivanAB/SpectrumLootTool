@@ -1,6 +1,6 @@
 local ADDON_NAME, SLH = ...
 
-SLH.version = "0.1.13"
+SLH.version = "0.1.14"
 SLH.OFFICER_RANK = 2 -- configurable officer rank threshold
 
 -- Initialize saved variables and basic database
@@ -38,7 +38,13 @@ end
 function SLH:IsOfficer(unit)
     unit = unit or "player"
     local guild, _, rankIndex = GetGuildInfo(unit)
-    return guild == "Spectrum Federation" and rankIndex and rankIndex <= self.OFFICER_RANK
+    if not guild or not rankIndex then
+        return false
+    end
+    
+    -- Check if guild name starts with "Spectrum Federation" (handles server suffixes)
+    local isSpectrumFed = string.find(guild, "^Spectrum Federation") ~= nil
+    return isSpectrumFed and rankIndex <= self.OFFICER_RANK
 end
 
 -- Recalculate all roll values from the complete log history

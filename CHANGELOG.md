@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.17 - Permanent Fix for Officer Arrow Visibility Bug
+- **MAJOR BUG FIX**: Completely overhauled officer detection system to permanently resolve recurring arrow visibility issues
+- **Enhanced Guild Detection**: Added fallback mechanisms when `GetGuildInfo()` returns incomplete data
+- **Flexible Guild Matching**: Improved guild name matching to handle various server name formats
+- **Debug System**: Added comprehensive debugging tools - use `/slh debug` to troubleshoot officer detection
+- **Additional Events**: Added `GUILD_ROSTER_UPDATE`, `PLAYER_LOGIN`, and `PLAYER_ENTERING_WORLD` event handlers
+- **Manual Refresh**: Right-click main window or use `/slh refresh` to manually refresh officer status
+- **Extended Commands**: Added `/slh status`, `/slh help`, and `/slh debug` for better troubleshooting
+- **Robust Recovery**: System now automatically recovers when guild data becomes available after login
+- **Persistent Solution**: This addresses the root cause and should prevent future occurrences of missing arrows
+
 ## 0.1.16 - WowUp Icon Support Enhancement
 - **WowUp Icon Fix**: Added `.pkgmeta` file to enable proper icon display in WowUp
 - **Package Metadata**: WowUp will now show custom addon icon instead of GitHub avatar

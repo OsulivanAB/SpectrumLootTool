@@ -1,6 +1,6 @@
 local ADDON_NAME, SLH = ...
 
-SLH.version = "0.1.16"
+SLH.version = "0.1.17"
 SLH.OFFICER_RANK = 2 -- configurable officer rank threshold
 
 -- Initialize saved variables and basic database
@@ -37,14 +37,80 @@ end
 -- Determine if the given unit is an officer in Spectrum Federation
 function SLH:IsOfficer(unit)
     unit = unit or "player"
+    
+    -- First, try GetGuildInfo which is the most reliable when available
     local guild, _, rankIndex = GetGuildInfo(unit)
+    
+    -- If GetGuildInfo fails, try alternative guild detection methods
     if not guild or not rankIndex then
+        -- Try guild roster approach for player unit
+        if unit == "player" and IsInGuild() then
+            local numGuildMembers = GetNumGuildMembers()
+            for i = 1, numGuildMembers do
+                local name, _, rankIndex2, _, _, _, _, _, _, _, _, _, _, _, _, _, guildGUID = GetGuildRosterInfo(i)
+                if name and name == UnitName("player") then
+                    guild = GetGuildInfo("player") or "Spectrum Federation"  -- fallback
+                    rankIndex = rankIndex2
+                    break
+                end
+            end
+        end
+    end
+    
+    -- If still no guild data, return false but with debug info
+    if not guild then
+        if self.debugOfficer then
+            print("|cffff0000SLH Debug: No guild data found for " .. (unit or "nil") .. "|r")
+        end
         return false
     end
     
-    -- Check if guild name starts with "Spectrum Federation" (handles server suffixes)
-    local isSpectrumFed = string.find(guild, "^Spectrum Federation") ~= nil
-    return isSpectrumFed and rankIndex <= self.OFFICER_RANK
+    if not rankIndex then
+        if self.debugOfficer then
+            print("|cffff0000SLH Debug: No rank index found for " .. (unit or "nil") .. " in guild " .. guild .. "|r")
+        end
+        return false
+    end
+    
+    -- Enhanced guild name matching - be more flexible
+    local isSpectrumFed = false
+    local guildLower = string.lower(guild)
+    
+    -- Check various possible guild name formats
+    if string.find(guildLower, "spectrum federation") or 
+       string.find(guildLower, "spectrum") and string.find(guildLower, "federation") then
+        isSpectrumFed = true
+    end
+    
+    local isOfficer = isSpectrumFed and rankIndex <= self.OFFICER_RANK
+    
+    -- Debug output (can be enabled for troubleshooting)
+    if self.debugOfficer then
+        print(string.format("|cff00ff00SLH Debug: %s - Guild: '%s', Rank: %d, IsSpectrum: %s, IsOfficer: %s|r", 
+            unit, guild, rankIndex, tostring(isSpectrumFed), tostring(isOfficer)))
+    end
+    
+    return isOfficer
+end
+
+-- Debug function to help troubleshoot officer detection issues
+function SLH:ToggleOfficerDebug()
+    self.debugOfficer = not self.debugOfficer
+    print("|cff00ff00SLH Officer Debug: " .. (self.debugOfficer and "ENABLED" or "DISABLED") .. "|r")
+    if self.debugOfficer then
+        print("|cffff0000Use '/slh debug off' to disable debug output|r")
+        -- Immediately test officer status
+        local isOff = self:IsOfficer("player")
+        print("|cff00ff00Current officer status: " .. tostring(isOff) .. "|r")
+    end
+end
+
+-- Force refresh of officer status and UI
+function SLH:RefreshOfficerStatus()
+    if self.frame and self.frame:IsShown() then
+        self:UpdateRoster()
+        print("|cff00ff00SLH: Officer status refreshed|r")
+    end
 end
 
 -- Recalculate all roll values from the complete log history
@@ -97,14 +163,19 @@ frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_REGEN_DISABLED")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+frame:RegisterEvent("GUILD_ROSTER_UPDATE")  -- Guild data loaded/updated
+frame:RegisterEvent("PLAYER_LOGIN")         -- Ensure guild data is available
+frame:RegisterEvent("PLAYER_ENTERING_WORLD") -- World loading complete
 frame:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" and arg1 == ADDON_NAME then
         SLH:Init()
         local f = SLH:CreateMainFrame()
         if SLH:IsEnabled() then f:Show() else f:Hide() end
         if f:IsShown() then SLH:UpdateRoster() end
-        print("|cff00ff00Spectrum Loot Helper loaded|r")
-    elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" or event == "GROUP_ROSTER_UPDATE" then
+        print("|cff00ff00Spectrum Loot Helper loaded - Use '/slh help' for commands|r")
+    elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" or 
+           event == "GROUP_ROSTER_UPDATE" or event == "GUILD_ROSTER_UPDATE" or
+           event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
         if SLH.frame then
             if SLH:IsEnabled() then
                 SLH.frame:Show()
@@ -124,9 +195,54 @@ end)
 
 -- Simple slash command to toggle the UI
 SLASH_SPECTRUMLOOTHELPER1 = "/slh"
-SlashCmdList["SPECTRUMLOOTHELPER"] = function()
+SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
+    local args = {}
+    for word in string.gmatch(msg or "", "%S+") do
+        table.insert(args, string.lower(word))
+    end
+    
+    -- Handle debug commands
+    if args[1] == "debug" then
+        if args[2] == "off" or args[2] == "disable" then
+            SLH.debugOfficer = false
+            print("|cff00ff00SLH Officer Debug: DISABLED|r")
+        else
+            SLH:ToggleOfficerDebug()
+        end
+        return
+    end
+    
+    -- Handle refresh command
+    if args[1] == "refresh" or args[1] == "reload" then
+        SLH:RefreshOfficerStatus()
+        return
+    end
+    
+    -- Handle status command
+    if args[1] == "status" then
+        local isOfficer = SLH:IsOfficer("player")
+        local guild = GetGuildInfo("player")
+        print("|cff00ff00=== SLH Status ===|r")
+        print("|cff00ff00Guild: " .. (guild or "None") .. "|r")
+        print("|cff00ff00Officer: " .. tostring(isOfficer) .. "|r")
+        print("|cff00ff00Version: " .. SLH.version .. "|r")
+        return
+    end
+    
+    -- Handle help command
+    if args[1] == "help" then
+        print("|cff00ff00=== SLH Commands ===|r")
+        print("|cff00ff00/slh - Toggle main window|r")
+        print("|cff00ff00/slh status - Show addon status|r")
+        print("|cff00ff00/slh debug - Toggle officer debug|r")
+        print("|cff00ff00/slh refresh - Refresh officer status|r")
+        return
+    end
+    
+    -- Default behavior - toggle UI
     if not SLH:IsEnabled() then
         print("|cffff0000Spectrum Loot Helper only works in raid groups and out of combat.|r")
+        print("|cffff0000Use '/slh help' for more commands|r")
         return
     end
     local f = SLH:CreateMainFrame()

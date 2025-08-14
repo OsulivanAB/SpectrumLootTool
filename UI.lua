@@ -24,6 +24,14 @@ function SLH:CreateMainFrame()
         local point, _, _, x, y = f:GetPoint()
         SLH.db.settings.position = { point = point, x = x, y = y }
     end)
+    
+    -- Right-click for refresh (helpful for officer status issues)
+    frame:SetScript("OnMouseUp", function(f, button)
+        if button == "RightButton" then
+            SLH:RefreshOfficerStatus()
+            print("|cff00ff00Right-click to refresh officer status|r")
+        end
+    end)
 
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOP", 0, -10)
@@ -96,7 +104,9 @@ function SLH:UpdateRoster()
         end)
         
         -- Check if player is an officer and show/hide arrows accordingly
-        if SLH:IsOfficer("player") then
+        -- Use a more robust check with fallback for reliability
+        local isOfficer = SLH:IsOfficer("player")
+        if isOfficer then
             row.upButton:Show()
             row.downButton:Show()
         else

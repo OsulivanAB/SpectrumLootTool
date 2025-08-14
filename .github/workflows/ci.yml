@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Validate TOC file
+      run: |
+        if [ ! -f "SpectrumLootTool.toc" ]; then
+          echo "Error: SpectrumLootTool.toc file not found!"
+          exit 1
+        fi
+        
+        # Extract version from TOC file
+        TOC_VERSION=$(grep "^## Version:" SpectrumLootTool.toc | sed 's/## Version: //')
+        echo "TOC Version: $TOC_VERSION"
+        
+        # Extract version from Core.lua
+        CORE_VERSION=$(grep 'SLH.version = ' Core.lua | sed 's/.*SLH.version = "\(.*\)".*/\1/')
+        echo "Core.lua Version: $CORE_VERSION"
+        
+        # Check if versions match
+        if [ "$TOC_VERSION" != "$CORE_VERSION" ]; then
+          echo "Error: Version mismatch between TOC ($TOC_VERSION) and Core.lua ($CORE_VERSION)"
+          exit 1
+        fi
+        
+        echo "Version validation passed: $TOC_VERSION"
+    
+    - name: Validate Lua files
+      run: |
+        # Check that all Lua files mentioned in TOC exist
+        grep "\.lua$" SpectrumLootTool.toc | while read -r lua_file; do
+          if [ ! -f "$lua_file" ]; then
+            echo "Error: Lua file $lua_file referenced in TOC but not found!"
+            exit 1
+          fi
+        done
+        
+        echo "All Lua files validation passed"
+    
+    - name: Check addon structure
+      run: |
+        # Verify required files exist
+        required_files=("SpectrumLootTool.toc" "Core.lua" "UI.lua" "Sync.lua" "README.md")
+        
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "Error: Required file $file not found!"
+            exit 1
+          fi
+        done
+        
+        echo "Addon structure validation passed"

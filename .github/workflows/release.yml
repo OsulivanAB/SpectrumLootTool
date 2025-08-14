@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Extract version from tag
+      id: extract_version
+      run: |
+        # Remove 'v' prefix from tag to get version
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+    
+    - name: Validate version consistency
+      run: |
+        VERSION="${{ steps.extract_version.outputs.version }}"
+        
+        # Extract version from TOC file
+        TOC_VERSION=$(grep "^## Version:" SpectrumLootTool.toc | sed 's/## Version: //')
+        echo "TOC Version: $TOC_VERSION"
+        
+        # Extract version from Core.lua
+        CORE_VERSION=$(grep 'SLH.version = ' Core.lua | sed 's/.*SLH.version = "\(.*\)".*/\1/')
+        echo "Core.lua Version: $CORE_VERSION"
+        
+        # Check if all versions match
+        if [ "$VERSION" != "$TOC_VERSION" ] || [ "$VERSION" != "$CORE_VERSION" ]; then
+          echo "Error: Version mismatch!"
+          echo "Tag: $VERSION"
+          echo "TOC: $TOC_VERSION" 
+          echo "Core.lua: $CORE_VERSION"
+          exit 1
+        fi
+        
+        echo "All versions match: $VERSION"
+    
+    - name: Package addon
+      run: |
+        VERSION="${{ steps.extract_version.outputs.version }}"
+        
+        # Create a clean directory for the addon
+        mkdir -p "package/SpectrumLootTool"
+        
+        # Copy addon files (exclude dev/build files)
+        cp *.toc "package/SpectrumLootTool/"
+        cp *.lua "package/SpectrumLootTool/"
+        cp README.md "package/SpectrumLootTool/"
+        cp CHANGELOG.md "package/SpectrumLootTool/"
+        
+        # Copy docs if they exist
+        if [ -d "docs" ]; then
+          cp -r docs "package/SpectrumLootTool/"
+        fi
+        
+        # Create the zip file
+        cd package
+        zip -r "../SpectrumLootTool-${VERSION}.zip" SpectrumLootTool/
+        cd ..
+        
+        # Verify the zip contents
+        echo "Zip file contents:"
+        unzip -l "SpectrumLootTool-${VERSION}.zip"
+    
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        VERSION="${{ steps.extract_version.outputs.version }}"
+        
+        # Extract changelog entry for this version
+        if [ -f "CHANGELOG.md" ]; then
+          # Get changelog section for this version
+          CHANGELOG_SECTION=$(awk "/^## $VERSION/{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md)
+          
+          if [ -n "$CHANGELOG_SECTION" ]; then
+            echo "Found changelog section for version $VERSION"
+            # Save to file for multiline output
+            echo "$CHANGELOG_SECTION" > release_notes.txt
+          else
+            echo "No changelog found for version $VERSION"
+            echo "Release $VERSION" > release_notes.txt
+          fi
+        else
+          echo "Release $VERSION" > release_notes.txt
+        fi
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: SpectrumLootTool ${{ steps.extract_version.outputs.version }}
+        body_path: release_notes.txt
+        files: ./SpectrumLootTool-${{ steps.extract_version.outputs.version }}.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

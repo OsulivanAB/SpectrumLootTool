@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.16 - WowUp Icon Support Enhancement
+- **WowUp Icon Fix**: Added `.pkgmeta` file to enable proper icon display in WowUp
+- **Package Metadata**: WowUp will now show custom addon icon instead of GitHub avatar
+- **Improved User Experience**: Better visual identification for WowUp users
+- **Enhanced Packaging**: Updated release workflow to include `.pkgmeta` for proper addon manager integration
+
 ## 0.1.15 - Added Addon Icon
 - **New Feature**: Added custom addon icon for better visual identification
 - **Icon Integration**: Updated TOC file to include IconTexture directive for addon managers

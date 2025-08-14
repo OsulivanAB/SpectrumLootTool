@@ -1,0 +1,23 @@
+package-as: SpectrumLootTool
+
+externals:
+
+manual-changelog:
+    filename: CHANGELOG.md
+    markup-type: markdown
+
+license-output: LICENSE.txt
+
+ignore:
+    - .github
+    - .vscode
+    - .devcontainer
+    - .gitignore
+    - .pkgmeta
+    - docs
+    - mkdocs.yml
+    - AGENTS.md
+
+# Icon for WowUp and other addon managers
+# This tells WowUp to use our custom icon instead of GitHub avatar
+icon: icon.png

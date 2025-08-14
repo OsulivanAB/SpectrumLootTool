@@ -64,6 +64,7 @@ jobs:
         cp *.toc "package/SpectrumLootTool/"
         cp *.lua "package/SpectrumLootTool/"
         cp *.png "package/SpectrumLootTool/" 2>/dev/null || true  # Copy icon if exists
+        cp .pkgmeta "package/SpectrumLootTool/" 2>/dev/null || true  # Copy pkgmeta for WowUp
         cp README.md "package/SpectrumLootTool/"
         cp CHANGELOG.md "package/SpectrumLootTool/"
         

@@ -1,6 +1,6 @@
 local ADDON_NAME, SLH = ...
 
-SLH.version = "0.1.15"
+SLH.version = "0.1.16"
 SLH.OFFICER_RANK = 2 -- configurable officer rank threshold
 
 -- Initialize saved variables and basic database

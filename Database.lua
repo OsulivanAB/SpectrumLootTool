@@ -402,33 +402,166 @@ end
 -- VALIDATION
 -- ============================================================================
 
--- TODO: Validate VenariiCharges value
+-- Validate VenariiCharges value
+-- Ensures charges is a non-negative integer value
+-- Returns validation result with error details
 function Database:ValidateVenariiCharges(charges)
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "ValidateVenariiCharges() called", {
-            charges = charges
+            charges = charges,
+            chargesType = type(charges)
         })
     end
     
-    -- TODO: Check if charges is a number
-    -- TODO: Ensure charges >= 0
-    -- TODO: Return true/false for validation result
-    -- TODO: Log validation failures with details
+    -- Check if charges is a number
+    if type(charges) ~= "number" then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "VenariiCharges validation failed - not a number", {
+                charges = charges,
+                actualType = type(charges),
+                expectedType = "number"
+            })
+        end
+        return false, "VenariiCharges must be a number"
+    end
+    
+    -- Ensure charges >= 0
+    if charges < 0 then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "VenariiCharges validation failed - negative value", {
+                charges = charges,
+                minimum = 0
+            })
+        end
+        return false, "VenariiCharges must be non-negative"
+    end
+    
+    -- Check if charges is an integer (not a decimal)
+    if charges ~= math.floor(charges) then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "VenariiCharges validation failed - not an integer", {
+                charges = charges,
+                floor = math.floor(charges)
+            })
+        end
+        return false, "VenariiCharges must be an integer"
+    end
+    
+    -- Log successful validation
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "VenariiCharges validation successful", {
+            charges = charges,
+            isValid = true
+        })
+    end
+    
+    -- Return validation success
+    return true, nil
 end
 
--- TODO: Validate equipment slot data
+-- Validate equipment slot data
+-- Checks all 16 equipment slots are booleans and required slots exist
+-- Returns validation result with error details
 function Database:ValidateEquipment(equipment)
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "ValidateEquipment() called", {
-            hasEquipment = equipment ~= nil
+            hasEquipment = equipment ~= nil,
+            equipmentType = type(equipment)
         })
     end
     
-    -- TODO: Check if equipment is a table
-    -- TODO: Validate all required slots exist
-    -- TODO: Ensure all slot values are booleans
-    -- TODO: Check for unknown/extra slots
-    -- TODO: Return validation result with details
+    -- Check if equipment is a table
+    if type(equipment) ~= "table" then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Equipment validation failed - not a table", {
+                equipment = equipment,
+                actualType = type(equipment),
+                expectedType = "table"
+            })
+        end
+        return false, "Equipment must be a table"
+    end
+    
+    -- Validate all required slots exist and are booleans
+    local missingSlots = {}
+    local invalidSlots = {}
+    
+    for i, slotName in ipairs(Database.EQUIPMENT_SLOTS) do
+        if equipment[slotName] == nil then
+            table.insert(missingSlots, slotName)
+        elseif type(equipment[slotName]) ~= "boolean" then
+            table.insert(invalidSlots, {
+                slot = slotName,
+                value = equipment[slotName],
+                type = type(equipment[slotName])
+            })
+        end
+    end
+    
+    -- Check for missing slots
+    if #missingSlots > 0 then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Equipment validation failed - missing slots", {
+                missingSlots = missingSlots,
+                missingCount = #missingSlots,
+                totalRequired = #Database.EQUIPMENT_SLOTS
+            })
+        end
+        return false, "Missing required equipment slots: " .. table.concat(missingSlots, ", ")
+    end
+    
+    -- Check for invalid slot values (non-booleans)
+    if #invalidSlots > 0 then
+        local invalidSlotNames = {}
+        for _, slotInfo in ipairs(invalidSlots) do
+            table.insert(invalidSlotNames, slotInfo.slot)
+        end
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Equipment validation failed - invalid slot values", {
+                invalidSlots = invalidSlots,
+                invalidCount = #invalidSlots
+            })
+        end
+        return false, "Equipment slots must be boolean values. Invalid slots: " .. table.concat(invalidSlotNames, ", ")
+    end
+    
+    -- Check for unknown/extra slots
+    local extraSlots = {}
+    for slotName, _ in pairs(equipment) do
+        local found = false
+        for _, validSlot in ipairs(Database.EQUIPMENT_SLOTS) do
+            if slotName == validSlot then
+                found = true
+                break
+            end
+        end
+        if not found then
+            table.insert(extraSlots, slotName)
+        end
+    end
+    
+    if #extraSlots > 0 then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Equipment validation warning - extra slots found", {
+                extraSlots = extraSlots,
+                extraCount = #extraSlots
+            })
+        end
+        -- Note: We don't fail validation for extra slots, just warn
+    end
+    
+    -- Log successful validation
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Equipment validation successful", {
+            totalSlots = #Database.EQUIPMENT_SLOTS,
+            validSlots = #Database.EQUIPMENT_SLOTS,
+            extraSlots = #extraSlots,
+            isValid = true
+        })
+    end
+    
+    -- Return validation success
+    return true, nil
 end
 
 -- TODO: Validate complete database entry

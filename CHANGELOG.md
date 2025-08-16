@@ -77,6 +77,15 @@
 - **Statistics Tracking**: Comprehensive logging of database statistics before and after deletion operations
 - **Success/Failure Status**: Clear return values indicating deletion success or failure with detailed error messages
 - **Task 13 Complete**: Delete entry functionality fully implemented with existence checking and comprehensive cleanup
+- **Version Query Function**: Implemented Database:GetCurrentVersionEntries() with current WoW version filtering
+- **Version Filtering**: Filters database entries by current WoW version using GetBuildInfo() API integration
+- **Version Statistics**: Comprehensive version breakdown statistics with counts for all versions in database
+- **Key Pattern Parsing**: Robust extraction of version information from player keys using pattern matching
+- **Current Version Detection**: Automatic detection of current WoW version with major.minor format extraction
+- **Database Structure Safety**: Safe handling of missing database or playerData table with proper fallbacks
+- **Comprehensive Logging**: Detailed logging of version filtering results, statistics, and matching entries
+- **Empty Database Handling**: Graceful handling of empty databases with appropriate return values
+- **Task 14 Complete**: Current version entries retrieval fully implemented with version filtering and statistics
 - **Database Persistence**: New entries saved to SpectrumLootHelperDB.playerData with proper error handling
 - **Task 10 Complete**: Add new entry functionality fully implemented with validation, duplicate checking, and persistence
 - **Error Logging**: Enhanced error logging with Debug module integration for all caught exceptions

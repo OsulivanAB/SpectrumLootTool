@@ -1156,16 +1156,134 @@ function Database:_DeleteEntryInternal(playerName, serverName, wowVersion)
     return true, deletedEntryBackup
 end
 
--- TODO: Get all entries for current WoW version
+-- Get all entries for current WoW version
+-- Filters database entries by current WoW version and returns matching entries
+-- Provides comprehensive logging and statistics for version-specific queries
 function Database:GetCurrentVersionEntries()
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "GetCurrentVersionEntries() called", {})
     end
     
-    -- TODO: Get current WoW version
-    -- TODO: Filter database entries by current version
-    -- TODO: Return table of matching entries
-    -- TODO: Log number of entries found
+    -- Wrap version entries retrieval in error handling
+    local success, result = SafeExecute(function()
+        return Database:_GetCurrentVersionEntriesInternal()
+    end, "GetCurrentVersionEntries")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Current version entries retrieval failed", {
+                error = result
+            })
+        end
+        return nil
+    end
+    
+    return result
+end
+
+-- Internal current version entries logic (separated for error handling)
+function Database:_GetCurrentVersionEntriesInternal()
+    
+    -- Get current WoW version
+    local wowVersion, buildNumber, buildDate, gameVersion = GetBuildInfo()
+    if not wowVersion or wowVersion == "" then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "WoW version not available for version filtering", {
+                wowVersion = wowVersion,
+                loading = true
+            })
+        end
+        return nil
+    end
+    
+    -- Extract major.minor version format (same as GenerateKey does)
+    local majorMinor = wowVersion:match("^(%d+%.%d+)")
+    if not majorMinor then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Could not extract major.minor version", {
+                wowVersion = wowVersion,
+                pattern = "^(%d+%.%d+)"
+            })
+        end
+        return nil
+    end
+    
+    -- Check if database structures exist
+    if not SpectrumLootHelperDB then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "SpectrumLootHelperDB not available for version filtering", {})
+        end
+        return {}
+    end
+    
+    if not SpectrumLootHelperDB.playerData then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "playerData table not available for version filtering", {})
+        end
+        return {}
+    end
+    
+    -- Filter database entries by current version
+    local matchingEntries = {}
+    local totalEntries = 0
+    local matchingCount = 0
+    local versionCounts = {}
+    
+    for key, entry in pairs(SpectrumLootHelperDB.playerData) do
+        totalEntries = totalEntries + 1
+        
+        -- Extract version from key (format: "PlayerName-ServerName-Version")
+        local keyVersion = key:match("%-([^%-]+)$") -- Get everything after the last dash
+        
+        if keyVersion then
+            -- Count versions for statistics
+            versionCounts[keyVersion] = (versionCounts[keyVersion] or 0) + 1
+            
+            -- Check if this entry matches current version
+            if keyVersion == majorMinor then
+                matchingEntries[key] = entry
+                matchingCount = matchingCount + 1
+                
+                if SLH.Debug then
+                    SLH.Debug:LogDebug("Database", "Found matching version entry", {
+                        key = key,
+                        version = keyVersion,
+                        currentVersion = majorMinor
+                    })
+                end
+            end
+        else
+            if SLH.Debug then
+                SLH.Debug:LogWarn("Database", "Could not extract version from key", {
+                    key = key,
+                    pattern = "%-([^%-]+)$"
+                })
+            end
+        end
+    end
+    
+    -- Prepare version statistics for logging
+    local versionStats = {}
+    for version, count in pairs(versionCounts) do
+        table.insert(versionStats, version .. ":" .. count)
+    end
+    
+    -- Log number of entries found with comprehensive statistics
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Current version entries retrieval completed", {
+            currentWoWVersion = wowVersion,
+            filteredVersion = majorMinor,
+            totalEntriesInDatabase = totalEntries,
+            matchingEntriesFound = matchingCount,
+            versionBreakdown = versionStats,
+            buildNumber = buildNumber,
+            gameVersion = gameVersion,
+            success = true
+        })
+    end
+    
+    -- Return table of matching entries
+    return matchingEntries
 end
 
 -- ============================================================================

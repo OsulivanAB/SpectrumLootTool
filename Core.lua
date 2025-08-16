@@ -251,6 +251,25 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
         return
     end
     
+    -- Handle version refresh command
+    if args[1] == "refreshversion" or args[1] == "versionrefresh" then
+        if SLH.Log then
+            local result = SLH.Log:RefreshWoWVersion()
+            if result.success then
+                if result.changed then
+                    print("|cff00ff00SLH: WoW version changed from " .. (result.previousVersion or "none") .. " to " .. result.newVersion .. "|r")
+                else
+                    print("|cff00ff00SLH: WoW version refreshed (no change): " .. result.newVersion .. "|r")
+                end
+            else
+                print("|cffff0000SLH: Failed to refresh WoW version|r")
+            end
+        else
+            print("|cffff0000SLH Log module not loaded|r")
+        end
+        return
+    end
+    
     -- Handle help command
     if args[1] == "help" then
         print("|cff00ff00=== SLH Commands ===|r")
@@ -258,6 +277,7 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
         print("|cff00ff00/slh status - Show addon status|r")
         print("|cff00ff00/slh debug - Toggle officer debug|r")
         print("|cff00ff00/slh refresh - Refresh officer status|r")
+        print("|cff00ff00/slh refreshversion - Refresh WoW version detection|r")
         return
     end
     

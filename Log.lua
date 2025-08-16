@@ -70,9 +70,76 @@ end
 
 -- Force refresh WoW version detection (useful for debugging or version changes)
 function SLH.Log:RefreshWoWVersion()
+    -- Store the previous version for comparison
+    local previousVersion = self.currentWoWVersion
+    
     -- Clear cached version to force re-detection
     self.currentWoWVersion = nil
-    return self:GetCurrentWoWVersion()
+    
+    -- Detect the new version
+    local newVersion = self:GetCurrentWoWVersion()
+    
+    -- Check if version actually changed
+    local versionChanged = (previousVersion ~= newVersion)
+    
+    -- Handle version change event
+    if versionChanged then
+        self:OnVersionChanged(previousVersion, newVersion)
+    end
+    
+    -- Log version refresh if debug logging is enabled
+    if SLH and SLH.debugLog then
+        if versionChanged then
+            local prevStr = previousVersion or "none"
+            print("|cff00ff00SLH Log: WoW version changed from " .. prevStr .. " to " .. newVersion .. "|r")
+        else
+            print("|cff00ff00SLH Log: WoW version refreshed (no change): " .. newVersion .. "|r")
+        end
+    end
+    
+    -- Return detailed information about the refresh operation
+    return {
+        success = (newVersion ~= "unknown"),
+        previousVersion = previousVersion,
+        newVersion = newVersion,
+        changed = versionChanged,
+        timestamp = GetServerTime() -- WoW API function for server timestamp
+    }
+end
+
+-- Handle WoW version changes (called internally when version changes)
+function SLH.Log:OnVersionChanged(oldVersion, newVersion)
+    -- Store version change event for debugging and potential future use
+    if not self.versionChangeHistory then
+        self.versionChangeHistory = {}
+    end
+    
+    local changeEvent = {
+        timestamp = GetServerTime(),
+        oldVersion = oldVersion,
+        newVersion = newVersion
+    }
+    
+    table.insert(self.versionChangeHistory, changeEvent)
+    
+    -- Keep only last 10 version changes to prevent memory bloat
+    while #self.versionChangeHistory > 10 do
+        table.remove(self.versionChangeHistory, 1)
+    end
+    
+    -- Notify Core system if it exists and has a version change handler
+    if SLH and SLH.OnWoWVersionChanged then
+        local success, err = pcall(SLH.OnWoWVersionChanged, oldVersion, newVersion)
+        if not success and SLH.debugLog then
+            print("|cffff0000SLH Log: Error notifying core of version change: " .. tostring(err) .. "|r")
+        end
+    end
+    
+    -- Future functionality: This is where we could trigger:
+    -- - Log cleanup for old versions
+    -- - Sync system notification
+    -- - UI updates
+    -- - Roll count resets (if major.minor version changed)
 end
 
 -- Add a new log entry for roll count changes
@@ -134,20 +201,52 @@ function SLH.Log:GetStats()
     -- Get current WoW version for stats
     local currentVersion = self:GetCurrentWoWVersion()
     
+    -- Include version change history in stats
+    local versionChanges = 0
+    local lastVersionChange = nil
+    if self.versionChangeHistory then
+        versionChanges = #self.versionChangeHistory
+        if versionChanges > 0 then
+            lastVersionChange = self.versionChangeHistory[versionChanges]
+        end
+    end
+    
     -- Placeholder for log statistics
     -- Will return:
     -- - Total entries
     -- - Entries for current WoW version
     -- - Current WoW version
+    -- - Version change tracking
     -- - Oldest/newest entry timestamps
     -- - Memory usage estimate
     return {
         totalEntries = 0,
         currentVersionEntries = 0,
         currentWoWVersion = currentVersion,
+        versionChanges = versionChanges,
+        lastVersionChange = lastVersionChange,
         oldestEntry = nil,
         newestEntry = nil
     }
+end
+
+-- Get version change history for debugging
+function SLH.Log:GetVersionChangeHistory()
+    -- Return copy of version change history to prevent external modification
+    if not self.versionChangeHistory then
+        return {}
+    end
+    
+    local history = {}
+    for i, event in ipairs(self.versionChangeHistory) do
+        history[i] = {
+            timestamp = event.timestamp,
+            oldVersion = event.oldVersion,
+            newVersion = event.newVersion
+        }
+    end
+    
+    return history
 end
 
 -- Export log data (for future sync functionality)

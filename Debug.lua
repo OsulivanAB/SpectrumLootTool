@@ -588,28 +588,231 @@ end
 
 -- Get debug system statistics
 function SLH.Debug:GetStats()
-    -- Placeholder for debug system statistics
-    -- Will return:
-    -- {
-    --     sessionStartTime = timestamp,
-    --     sessionDuration = durationInSeconds,
-    --     totalLogEntries = number,
-    --     logEntriesByLevel = { INFO = count, WARN = count, etc. },
-    --     logEntriesByComponent = { Core = count, UI = count, etc. },
-    --     memoryUsage = estimatedBytes,
-    --     fileSize = fileSizeInBytes,
-    --     enabled = true/false
-    -- }
-    return {
-        sessionStartTime = self.sessionStartTime,
-        sessionDuration = 0,
-        totalLogEntries = #self.logBuffer,
+    -- Provide debug system health and usage information
+    -- Returns comprehensive statistics about the debug system state and performance
+    -- Dependencies: All logging functions for comprehensive stats
+    -- Focus: Memory usage calculation, categorization, performance metrics
+    
+    -- Ensure stats structure exists (defensive programming)
+    self.stats = self.stats or {
+        totalLogEntries = 0,
         logEntriesByLevel = {},
-        logEntriesByComponent = {},
-        memoryUsage = 0,
-        fileSize = 0,
-        enabled = self.enabled
+        logEntriesByComponent = {}
     }
+    
+    -- Calculate session duration
+    local currentTime = GetServerTime()
+    local sessionDuration = 0
+    if self.sessionStartTime then
+        sessionDuration = currentTime - self.sessionStartTime
+    end
+    
+    -- Recalculate real-time statistics from current log buffer
+    local realTimeStats = {
+        totalLogEntries = 0,
+        logEntriesByLevel = {},
+        logEntriesByComponent = {}
+    }
+    
+    -- Calculate estimated memory usage
+    local estimatedMemoryUsage = 0
+    
+    if self.logBuffer then
+        realTimeStats.totalLogEntries = #self.logBuffer
+        
+        -- Process each log entry for categorization and memory estimation
+        for _, logEntry in ipairs(self.logBuffer) do
+            -- Count by level
+            local level = logEntry.level or "UNKNOWN"
+            realTimeStats.logEntriesByLevel[level] = (realTimeStats.logEntriesByLevel[level] or 0) + 1
+            
+            -- Count by component
+            local component = logEntry.component or "UNKNOWN"
+            realTimeStats.logEntriesByComponent[component] = (realTimeStats.logEntriesByComponent[component] or 0) + 1
+            
+            -- Estimate memory usage per entry
+            -- Base structure: timestamp(8) + sessionTime(8) + level(string) + component(string) + message(string)
+            local entrySize = 16 -- Base numbers
+            entrySize = entrySize + (logEntry.level and #logEntry.level or 0)
+            entrySize = entrySize + (logEntry.component and #logEntry.component or 0)
+            entrySize = entrySize + (logEntry.message and #logEntry.message or 0)
+            
+            -- Estimate data table size (if present)
+            if logEntry.data then
+                entrySize = entrySize + self:_EstimateDataSize(logEntry.data)
+            end
+            
+            estimatedMemoryUsage = estimatedMemoryUsage + entrySize
+        end
+    end
+    
+    -- Calculate file size from saved variables (if available)
+    local fileSize = 0
+    if SpectrumLootHelperDB and SpectrumLootHelperDB.debugLogs and SpectrumLootHelperDB.debugLogs.logs then
+        -- Estimate size based on saved logs
+        for _, logString in ipairs(SpectrumLootHelperDB.debugLogs.logs) do
+            fileSize = fileSize + #logString + 1 -- +1 for newline
+        end
+    end
+    
+    -- Get file information
+    local fileInfo = self:GetLogFileInfo()
+    
+    -- Calculate performance metrics
+    local averageLogsPerMinute = 0
+    if sessionDuration > 0 then
+        averageLogsPerMinute = (realTimeStats.totalLogEntries * 60) / sessionDuration
+    end
+    
+    -- Build comprehensive statistics table
+    local stats = {
+        -- Session information
+        sessionStartTime = self.sessionStartTime,
+        sessionDuration = sessionDuration,
+        sessionDurationFormatted = self:_FormatDuration(sessionDuration),
+        
+        -- Log counts and categorization
+        totalLogEntries = realTimeStats.totalLogEntries,
+        logEntriesByLevel = realTimeStats.logEntriesByLevel,
+        logEntriesByComponent = realTimeStats.logEntriesByComponent,
+        
+        -- Memory and storage metrics
+        memoryUsage = estimatedMemoryUsage,
+        memoryUsageFormatted = self:_FormatBytes(estimatedMemoryUsage),
+        fileSize = fileSize,
+        fileSizeFormatted = self:_FormatBytes(fileSize),
+        maxLogEntries = self.maxLogEntries,
+        bufferUtilization = self.maxLogEntries > 0 and (realTimeStats.totalLogEntries / self.maxLogEntries) or 0,
+        
+        -- System state
+        enabled = self.enabled,
+        version = self.version,
+        logFilePath = self.logFilePath,
+        
+        -- Performance metrics
+        averageLogsPerMinute = averageLogsPerMinute,
+        
+        -- File information
+        fileExists = fileInfo.exists,
+        fileReadable = fileInfo.readable,
+        
+        -- System context
+        wowVersion = GetBuildInfo(),
+        addonVersion = SLH.version or "unknown",
+        playerName = UnitName("player"),
+        realmName = GetRealmName(),
+        
+        -- Timestamps for reporting
+        statsGeneratedAt = currentTime,
+        statsGeneratedAtFormatted = date("%Y-%m-%d %H:%M:%S", currentTime)
+    }
+    
+    -- Add debug logging for stats generation (if enabled and not generating recursion)
+    if self:IsEnabled() then
+        -- Use a simple flag to prevent infinite recursion during stats generation
+        if not self._generatingStats then
+            self._generatingStats = true
+            self:LogDebug("Debug", "System statistics generated", {
+                totalEntries = stats.totalLogEntries,
+                memoryUsage = stats.memoryUsageFormatted,
+                sessionDuration = stats.sessionDurationFormatted,
+                bufferUtilization = string.format("%.1f%%", stats.bufferUtilization * 100)
+            })
+            self._generatingStats = false
+        end
+    end
+    
+    return stats
+end
+
+-- Internal helper function to estimate memory usage of data tables
+function SLH.Debug:_EstimateDataSize(data)
+    -- Estimate memory usage of a data table (in bytes)
+    -- Uses recursive traversal with depth limiting to prevent infinite loops
+    
+    if data == nil then
+        return 0
+    end
+    
+    if type(data) ~= "table" then
+        -- Estimate size for primitive types
+        if type(data) == "string" then
+            return #data
+        elseif type(data) == "number" then
+            return 8 -- Assume 64-bit numbers
+        elseif type(data) == "boolean" then
+            return 1
+        else
+            return 8 -- Unknown types, assume pointer size
+        end
+    end
+    
+    -- Handle table estimation with depth limiting
+    local function estimateTableSize(tbl, depth)
+        depth = depth or 0
+        if depth > 3 then -- Prevent infinite recursion
+            return 50 -- Rough estimate for deep tables
+        end
+        
+        local size = 16 -- Base table overhead
+        local count = 0
+        
+        for k, v in pairs(tbl) do
+            count = count + 1
+            if count > 20 then -- Limit processing for very large tables
+                size = size + 100 -- Rough estimate for remaining entries
+                break
+            end
+            
+            -- Add key size
+            if type(k) == "string" then
+                size = size + #k
+            else
+                size = size + 8
+            end
+            
+            -- Add value size (recursive)
+            if type(v) == "table" then
+                size = size + estimateTableSize(v, depth + 1)
+            elseif type(v) == "string" then
+                size = size + #v
+            else
+                size = size + 8
+            end
+        end
+        
+        return size
+    end
+    
+    return estimateTableSize(data)
+end
+
+-- Internal helper function to format byte sizes into human-readable format
+function SLH.Debug:_FormatBytes(bytes)
+    -- Convert bytes to human-readable format (B, KB, MB)
+    if bytes < 1024 then
+        return string.format("%d B", bytes)
+    elseif bytes < 1024 * 1024 then
+        return string.format("%.1f KB", bytes / 1024)
+    else
+        return string.format("%.1f MB", bytes / (1024 * 1024))
+    end
+end
+
+-- Internal helper function to format duration into human-readable format
+function SLH.Debug:_FormatDuration(seconds)
+    -- Convert seconds to human-readable duration format
+    if seconds < 60 then
+        return string.format("%d seconds", seconds)
+    elseif seconds < 3600 then
+        local minutes = math.floor(seconds / 60)
+        local remainingSeconds = seconds % 60
+        return string.format("%d minutes, %d seconds", minutes, remainingSeconds)
+    else
+        local hours = math.floor(seconds / 3600)
+        local remainingMinutes = math.floor((seconds % 3600) / 60)
+        return string.format("%d hours, %d minutes", hours, remainingMinutes)
+    end
 end
 
 -- Internal helper function to update logging statistics

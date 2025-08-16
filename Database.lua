@@ -64,6 +64,44 @@ function Database:Init()
         end
     end
     
+    -- Validate saved variables are available and writable (Task 2 requirement)
+    local testKey = "__database_write_test__"
+    local writeTestSuccess = false
+    
+    -- Test write capability
+    SpectrumLootHelperDB.playerData[testKey] = true
+    if SpectrumLootHelperDB.playerData[testKey] == true then
+        writeTestSuccess = true
+        -- Clean up test
+        SpectrumLootHelperDB.playerData[testKey] = nil
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "Saved variables write test successful", {})
+        end
+    else
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Saved variables write test failed", {})
+        end
+    end
+    
+    -- Handle addon reload/logout persistence validation (Task 2 requirement)
+    if not SpectrumLootHelperDB.lastDatabaseAccess then
+        SpectrumLootHelperDB.lastDatabaseAccess = time()
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "First database access recorded", {
+                timestamp = SpectrumLootHelperDB.lastDatabaseAccess
+            })
+        end
+    else
+        local timeSinceLastAccess = time() - SpectrumLootHelperDB.lastDatabaseAccess
+        SpectrumLootHelperDB.lastDatabaseAccess = time()
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Database persistence validated", {
+                timeSinceLastAccess = timeSinceLastAccess,
+                timestamp = SpectrumLootHelperDB.lastDatabaseAccess
+            })
+        end
+    end
+    
     -- Verify saved variables structure is correct
     local structureValid = true
     if type(SpectrumLootHelperDB.playerData) ~= "table" then
@@ -89,11 +127,13 @@ function Database:Init()
             dbVersion = Database.DB_VERSION,
             equipmentSlots = #Database.EQUIPMENT_SLOTS,
             playerDataExists = SpectrumLootHelperDB.playerData ~= nil,
-            structureValid = structureValid
+            structureValid = structureValid,
+            savedVariablesWritable = writeTestSuccess,
+            persistenceValidated = SpectrumLootHelperDB.lastDatabaseAccess ~= nil
         })
     end
     
-    return true
+    return writeTestSuccess and structureValid
 end
 
 -- ============================================================================

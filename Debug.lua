@@ -10,11 +10,6 @@ SLH.Debug = {
     logFilePath = "SpectrumLootTool_Debug.log", -- Debug log file name
 }
 
--- Initialize the debug system
-function     -- Log the toggle action
-    self:SetEnabled(not self.enabled)
-end
-
 -- Internal helper function to serialize log data for file output
 function SLH.Debug:_SerializeLogData(data)
     -- Convert log data table to readable string format
@@ -75,7 +70,9 @@ function SLH.Debug:_SerializeLogData(data)
         return "serialization_error"
     end
 end
-Debug:Init()
+
+-- Initialize the debug system
+function SLH.Debug:Init()
     -- Ensure saved variables structure exists (SpectrumLootHelperDB is initialized in Core.lua)
     if SpectrumLootHelperDB then
         SpectrumLootHelperDB.debug = SpectrumLootHelperDB.debug or {}
@@ -318,15 +315,93 @@ end
 
 -- Get current session debug logs
 function SLH.Debug:GetSessionLogs(level, component, count)
-    -- Placeholder for retrieving session logs
+    -- Filter and retrieve logs from memory buffer
     -- Parameters:
-    -- - level: string, optional filter by log level
-    -- - component: string, optional filter by component
-    -- - count: number, optional limit number of entries returned
+    -- - level: string, optional filter by log level (e.g., "INFO", "ERROR")
+    -- - component: string, optional filter by component (e.g., "Core", "UI")
+    -- - count: number, optional limit number of entries returned (default: all)
+    -- Returns: array of log entries, most recent first
     
-    -- Will return filtered array of log entries from current session
-    -- Most recent entries first
-    return {}
+    -- Performance optimization: Early exit if no logs or debug disabled
+    if not self.logBuffer or #self.logBuffer == 0 then
+        return {}
+    end
+    
+    -- Parameter validation and normalization
+    if level and type(level) ~= "string" then
+        error("GetSessionLogs() level parameter must be string or nil")
+        return {}
+    end
+    if component and type(component) ~= "string" then
+        error("GetSessionLogs() component parameter must be string or nil")
+        return {}
+    end
+    if count and (type(count) ~= "number" or count < 0) then
+        error("GetSessionLogs() count parameter must be positive number or nil")
+        return {}
+    end
+    
+    -- Normalize level to uppercase for consistent filtering
+    local filterLevel = level and level:upper() or nil
+    
+    -- Apply filters and collect matching entries
+    local filteredLogs = {}
+    
+    -- Iterate through log buffer (already in chronological order)
+    for i, logEntry in ipairs(self.logBuffer) do
+        local includeEntry = true
+        
+        -- Apply level filter if specified
+        if filterLevel and logEntry.level ~= filterLevel then
+            includeEntry = false
+        end
+        
+        -- Apply component filter if specified
+        if includeEntry and component and logEntry.component ~= component then
+            includeEntry = false
+        end
+        
+        -- Add entry if it passes all filters
+        if includeEntry then
+            -- Create a copy to prevent external modification of internal data
+            local entryCopy = {
+                timestamp = logEntry.timestamp,
+                sessionTime = logEntry.sessionTime,
+                level = logEntry.level,
+                component = logEntry.component,
+                message = logEntry.message,
+                data = logEntry.data -- Note: This maintains reference to original data table
+            }
+            table.insert(filteredLogs, entryCopy)
+        end
+    end
+    
+    -- Sort results: Most recent entries first (reverse chronological order)
+    table.sort(filteredLogs, function(a, b)
+        return a.timestamp > b.timestamp
+    end)
+    
+    -- Apply count limit if specified
+    if count and count > 0 and #filteredLogs > count then
+        local limitedLogs = {}
+        for i = 1, count do
+            table.insert(limitedLogs, filteredLogs[i])
+        end
+        filteredLogs = limitedLogs
+    end
+    
+    -- Performance logging for debugging the debug system itself
+    if self:IsEnabled() and (filterLevel or component or count) then
+        self:LogDebug("Debug", "Session logs retrieved with filters", {
+            originalCount = #self.logBuffer,
+            filteredCount = #filteredLogs,
+            levelFilter = filterLevel,
+            componentFilter = component,
+            countLimit = count
+        })
+    end
+    
+    return filteredLogs
 end
 
 -- Write current log buffer to file

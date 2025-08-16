@@ -12,6 +12,33 @@
 - **Debug Features**: File-based debug logging, in-game log viewing, slash commands for debug control
 - **Debug Commands**: Added /slh debuglog commands for debug logging management
 - **Architecture**: Structured log system with WoW version tracking, entry validation, and future sync compatibility
+- **Debug System Init**: Implemented Debug:Init() function for system bootstrap and state management
+- **Saved Variables**: Integrated debug settings with SpectrumLootHelperDB for persistent storage
+- **Debug State Management**: Implemented Debug:SetEnabled() with validation, persistence, and user feedback
+- **State Toggle**: Debug logging can now be enabled/disabled with proper state management
+- **User Feedback**: Added colored chat messages for debug state changes
+- **Debug State Query**: Implemented Debug:IsEnabled() for fast, reliable state checking throughout system
+- **Defensive Programming**: Added state validation to prevent corruption and ensure reliability
+- **File System Utilities**: Implemented Debug:GetLogFileInfo() for file path management and status checking
+- **WoW Compatibility**: Designed file operations to work within WoW's limited file system access
+- **Phase 1 Foundation**: Completed Tasks 1-4, establishing solid debug system foundation
+- **Core Logging Engine**: Implemented Debug:Log() central logging function with proper memory management
+- **Convenience Logging**: Added type-safe wrapper functions (LogInfo, LogWarn, LogError, LogDebug)
+- **File Persistence**: Implemented Debug:FlushToFile() for persisting logs to WoW saved variables
+- **Log Retrieval**: Implemented Debug:GetSessionLogs() with filtering, sorting, and performance optimization
+- **Session Management**: Added Debug:StartSession() and Debug:ClearLogs() for session lifecycle control
+- **Phase 3 Complete**: Finished Tasks 5-10 of debug system core logging engine implementation
+- **Dev Container Enhancement**: Added Lua 5.3 and luac to dev container for syntax checking and testing
+- **Development Tools**: Updated local development guide with Lua syntax validation commands
+- **CI Enhancement**: Added automated Lua syntax checking to GitHub Actions CI pipeline
+- **PR Quality Gate**: All pull requests now require valid Lua syntax before merge
+- **Automated Testing**: CI validates syntax of all .lua files and TOC-referenced files
+- **Release Guidance**: Added comprehensive GitHub release guidance document for Copilot assistance
+- **Changelog Optimization**: Included Copilot commands for release preparation and changelog cleanup
+- **Semantic Versioning**: Added optimized Copilot command for semantic versioning validation and correction
+- **Version Decision Matrix**: Created detailed guidelines for MAJOR/MINOR/PATCH version increment decisions
+- **GitIgnore Validation**: Added dynamic Copilot command to validate against .gitignore file references
+- **Content Filtering**: Ensures no ignored files are mentioned in changelogs or commit messages
 - **Note**: This version will not sync data between players - use only for testing or single-player scenarios
 
 ## 0.1.17 - Permanent Fix for Officer Arrow Visibility Bug

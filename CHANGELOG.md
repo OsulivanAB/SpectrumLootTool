@@ -1,21 +1,5 @@
 # Changelog
 
-## 0.2.0 - Enterprise-Grade Sync Security and WoW Version Filtering
-- **MAJOR SECURITY ENHANCEMENT**: Complete rewrite of synchronization system with enterprise-grade security
-- **WoW Version Filtering**: Automatic filtering of sync data by WoW version (major.minor) to prevent cross-expansion data pollution
-- **Officer-Only Security**: Only Spectrum Federation officers can broadcast or modify log entries (critical security improvement)
-- **Enhanced Error Handling**: Comprehensive pcall protection around all WoW API calls and sync operations
-- **Throttled Broadcasting**: Intelligent broadcast throttling to prevent spam and improve network performance
-- **Message Validation**: Extensive validation of all incoming sync messages with detailed error reporting
-- **Conflict Resolution**: Smart conflict resolution for concurrent log entries with timestamp-based precedence
-- **Debug Tools**: Advanced debugging system with `/slh syncdebug`, `/slh sectest`, and `/slh cleanup` commands
-- **Legacy Compatibility**: Maintains backward compatibility with older sync protocol versions
-- **Log Retention**: Automatic cleanup of old log entries (30-day retention policy)
-- **Performance Optimization**: Significantly improved sync performance with better data serialization
-- **Security Logging**: Detailed security event logging for troubleshooting and monitoring
-- **Extended Commands**: Added `/slh syncforce`, `/slh syncreq`, `/slh cleanup`, and `/slh sectest` commands
-- **Enhanced Status**: Improved `/slh status` command shows sync version, WoW version, and log statistics
-
 ## 0.1.17 - Permanent Fix for Officer Arrow Visibility Bug
 - **MAJOR BUG FIX**: Completely overhauled officer detection system to permanently resolve recurring arrow visibility issues
 - **Enhanced Guild Detection**: Added fallback mechanisms when `GetGuildInfo()` returns incomplete data

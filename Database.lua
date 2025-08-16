@@ -1844,17 +1844,223 @@ end
 -- DEBUGGING / LOGGING
 -- ============================================================================
 
--- TODO: Get database statistics for debugging
+-- Get database statistics for debugging and monitoring
+-- Provides comprehensive statistics including entry counts, memory usage, version distribution, and integrity status
+-- Returns detailed statistics table for debugging and performance monitoring
 function Database:GetDebugStats()
-    if SLH.Debug then
-        SLH.Debug:LogDebug("Database", "GetDebugStats() called", {})
+    return self:SafeExecute("GetDebugStats", function()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "GetDebugStats() starting statistics collection", {
+                operation = "debug_statistics"
+            })
+        end
+        
+        local startTime = GetServerTime()
+        
+        -- Initialize comprehensive statistics structure
+        local debugStats = {
+            timestamp = startTime,
+            database = {
+                initialized = false,
+                totalEntries = 0,
+                memoryUsage = 0,
+                memoryUsageFormatted = "0 B"
+            },
+            entries = {
+                byVersion = {},
+                byPlayer = {},
+                byServer = {}
+            },
+            integrity = {
+                valid = 0,
+                corrupted = 0,
+                orphaned = 0,
+                schemaViolations = 0
+            },
+            performance = {
+                collectionTime = 0,
+                averageEntrySize = 0,
+                largestEntry = 0,
+                smallestEntry = math.huge
+            },
+            schema = {
+                version = Database.DB_VERSION,
+                equipmentSlots = #Database.EQUIPMENT_SLOTS,
+                expectedFields = {"LastUpdate", "VenariiCharges", "Equipment"}
+            }
+        }
+        
+        -- Check if database is initialized
+        if not SpectrumLootHelperDB or not SpectrumLootHelperDB.playerData then
+            if SLH.Debug then
+                SLH.Debug:LogInfo("Database", "Database not initialized for statistics", {})
+            end
+            debugStats.database.initialized = false
+            return true, debugStats
+        end
+        
+        debugStats.database.initialized = true
+        
+        -- Count total entries and analyze each entry
+        local totalMemoryUsage = 0
+        local entryCount = 0
+        
+        for playerKey, playerData in pairs(SpectrumLootHelperDB.playerData) do
+            entryCount = entryCount + 1
+            
+            -- Calculate estimated memory usage for this entry
+            local entrySize = 0
+            
+            -- Key size
+            entrySize = entrySize + #playerKey
+            
+            -- Data size estimation
+            if type(playerData) == "table" then
+                -- Basic fields
+                entrySize = entrySize + 8 + 8 + 8  -- LastUpdate (8), VenariiCharges (8), base table (8)
+                
+                -- Equipment table
+                if playerData.Equipment and type(playerData.Equipment) == "table" then
+                    entrySize = entrySize + 8 + (#Database.EQUIPMENT_SLOTS * 4)  -- Equipment table + 16 booleans
+                end
+                
+                -- String fields
+                if playerData.PlayerName then entrySize = entrySize + #playerData.PlayerName end
+                if playerData.ServerName then entrySize = entrySize + #playerData.ServerName end
+                if playerData.WoWVersion then entrySize = entrySize + #playerData.WoWVersion end
+                
+                -- Update size tracking
+                debugStats.performance.largestEntry = math.max(debugStats.performance.largestEntry, entrySize)
+                debugStats.performance.smallestEntry = math.min(debugStats.performance.smallestEntry, entrySize)
+            else
+                entrySize = 50 -- Estimate for corrupted entry
+            end
+            
+            totalMemoryUsage = totalMemoryUsage + entrySize
+            
+            -- Extract version, player, and server information
+            local playerName, serverName, wowVersion = playerKey:match("^(.+)%-(.+)%-(%d+%.%d+)$")
+            
+            if playerName and serverName and wowVersion then
+                -- Count by version
+                debugStats.entries.byVersion[wowVersion] = (debugStats.entries.byVersion[wowVersion] or 0) + 1
+                
+                -- Count by player (unique players across versions)
+                local playerIdentifier = playerName .. "-" .. serverName
+                debugStats.entries.byPlayer[playerIdentifier] = (debugStats.entries.byPlayer[playerIdentifier] or 0) + 1
+                
+                -- Count by server
+                debugStats.entries.byServer[serverName] = (debugStats.entries.byServer[serverName] or 0) + 1
+                
+                -- Quick integrity check
+                if type(playerData) == "table" then
+                    local valid, _ = self:ValidateEntry(playerData)
+                    if valid then
+                        debugStats.integrity.valid = debugStats.integrity.valid + 1
+                    else
+                        debugStats.integrity.schemaViolations = debugStats.integrity.schemaViolations + 1
+                    end
+                else
+                    debugStats.integrity.corrupted = debugStats.integrity.corrupted + 1
+                end
+            else
+                debugStats.integrity.orphaned = debugStats.integrity.orphaned + 1
+            end
+        end
+        
+        -- Update database statistics
+        debugStats.database.totalEntries = entryCount
+        debugStats.database.memoryUsage = totalMemoryUsage
+        debugStats.database.memoryUsageFormatted = self:_FormatMemorySize(totalMemoryUsage)
+        
+        -- Calculate performance metrics
+        if entryCount > 0 then
+            debugStats.performance.averageEntrySize = totalMemoryUsage / entryCount
+        end
+        
+        if debugStats.performance.smallestEntry == math.huge then
+            debugStats.performance.smallestEntry = 0
+        end
+        
+        -- Calculate collection time
+        debugStats.performance.collectionTime = GetServerTime() - startTime
+        
+        -- Generate summary information
+        debugStats.summary = {
+            totalPlayers = self:_CountUniqueKeys(debugStats.entries.byPlayer),
+            totalServers = self:_CountUniqueKeys(debugStats.entries.byServer),
+            totalVersions = self:_CountUniqueKeys(debugStats.entries.byVersion),
+            integrityRate = entryCount > 0 and (debugStats.integrity.valid / entryCount) * 100 or 0,
+            memoryPerEntry = debugStats.performance.averageEntrySize,
+            healthStatus = self:_DetermineHealthStatus(debugStats)
+        }
+        
+        -- Log comprehensive statistics collection results
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Debug statistics collection completed", {
+                totalEntries = debugStats.database.totalEntries,
+                memoryUsage = debugStats.database.memoryUsage,
+                validEntries = debugStats.integrity.valid,
+                corruptedEntries = debugStats.integrity.corrupted,
+                uniquePlayers = debugStats.summary.totalPlayers,
+                uniqueServers = debugStats.summary.totalServers,
+                wowVersions = debugStats.summary.totalVersions,
+                integrityRate = debugStats.summary.integrityRate,
+                collectionTime = debugStats.performance.collectionTime,
+                healthStatus = debugStats.summary.healthStatus,
+                operation = "debug_stats_complete"
+            })
+        end
+        
+        return true, debugStats
+        
+    end)
+end
+
+-- Helper function to format memory size in human-readable format
+function Database:_FormatMemorySize(bytes)
+    if bytes < 1024 then
+        return string.format("%d B", bytes)
+    elseif bytes < 1024 * 1024 then
+        return string.format("%.1f KB", bytes / 1024)
+    elseif bytes < 1024 * 1024 * 1024 then
+        return string.format("%.1f MB", bytes / (1024 * 1024))
+    else
+        return string.format("%.1f GB", bytes / (1024 * 1024 * 1024))
+    end
+end
+
+-- Helper function to count unique keys in a table
+function Database:_CountUniqueKeys(table)
+    local count = 0
+    for _ in pairs(table) do
+        count = count + 1
+    end
+    return count
+end
+
+-- Helper function to determine overall database health status
+function Database:_DetermineHealthStatus(stats)
+    local total = stats.database.totalEntries
+    if total == 0 then
+        return "EMPTY"
     end
     
-    -- TODO: Count total entries in database
-    -- TODO: Count entries by WoW version
-    -- TODO: Calculate memory usage
-    -- TODO: Check for data integrity issues
-    -- TODO: Return comprehensive stats table
+    local corruptionRate = (stats.integrity.corrupted + stats.integrity.orphaned) / total * 100
+    local integrityRate = stats.integrity.valid / total * 100
+    
+    if corruptionRate > 10 then
+        return "CRITICAL"
+    elseif corruptionRate > 5 then
+        return "WARNING"
+    elseif integrityRate > 95 then
+        return "EXCELLENT"
+    elseif integrityRate > 90 then
+        return "GOOD"
+    else
+        return "FAIR"
+    end
 end
 
 -- TODO: Export database for debugging/support

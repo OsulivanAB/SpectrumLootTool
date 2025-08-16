@@ -3467,6 +3467,328 @@ function Database:GetSize()
 end
 
 -- ============================================================================
+-- TASK 23: PERFORMANCE OPTIMIZATION
+-- ============================================================================
+
+-- Cache for frequently accessed data to minimize repeated calculations
+local performanceCache = {
+    currentPlayerKey = nil,
+    lastPlayerKeyUpdate = 0,
+    entrySchema = nil,
+    realmName = nil,
+    buildInfo = {},
+    lastBuildInfoUpdate = 0
+}
+
+-- Performance optimization for frequently used functions
+-- Implements caching for common queries and minimizes memory allocations
+function Database:OptimizePerformance()
+    return self:SafeExecute("OptimizePerformance", function()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "Starting database performance optimization", {
+                operation = "performance_optimization"
+            })
+        end
+        
+        local optimizationResults = {
+            cachingEnabled = false,
+            memoryOptimized = false,
+            functionsOptimized = {},
+            performanceGains = {},
+            startTime = GetServerTime()
+        }
+        
+        -- Optimization 1: Enable caching for GetCurrentPlayerKey()
+        local function enablePlayerKeyCaching()
+            -- Cache will be invalidated after 300 seconds (5 minutes) or on player change
+            if not performanceCache.currentPlayerKey or 
+               (GetServerTime() - performanceCache.lastPlayerKeyUpdate) > 300 then
+                
+                local success, key = self:GetCurrentPlayerKey()
+                if success then
+                    performanceCache.currentPlayerKey = key
+                    performanceCache.lastPlayerKeyUpdate = GetServerTime()
+                    return true, "Player key caching enabled"
+                end
+                return false, "Failed to cache player key"
+            end
+            return true, "Player key already cached"
+        end
+        
+        -- Optimization 2: Cache realm name and build info
+        local function enableSystemInfoCaching()
+            local changed = false
+            
+            -- Cache realm name
+            if not performanceCache.realmName then
+                performanceCache.realmName = GetRealmName()
+                changed = true
+            end
+            
+            -- Cache build info (update every 10 minutes in case of patches)
+            if not performanceCache.buildInfo.version or 
+               (GetServerTime() - performanceCache.lastBuildInfoUpdate) > 600 then
+                
+                local version, build, date, tocVersion = GetBuildInfo()
+                performanceCache.buildInfo = {
+                    version = version,
+                    build = build,
+                    date = date,
+                    tocVersion = tocVersion,
+                    majorMinor = string.match(version or "", "^(%d+%.%d+)")
+                }
+                performanceCache.lastBuildInfoUpdate = GetServerTime()
+                changed = true
+            end
+            
+            return changed, "System info caching updated"
+        end
+        
+        -- Optimization 3: Cache entry schema
+        local function enableSchemaCaching()
+            if not performanceCache.entrySchema then
+                performanceCache.entrySchema = {
+                    VenariiCharges = 0,
+                    Equipment = {
+                        Head = false, Neck = false, Shoulder = false, Back = false,
+                        Chest = false, Wrist = false, Gloves = false, Belt = false,
+                        Legs = false, Feet = false, Ring1 = false, Ring2 = false,
+                        Trinket1 = false, Trinket2 = false, MainHand = false, OffHand = false
+                    },
+                    LastUpdate = GetServerTime()
+                }
+                return true, "Entry schema cached"
+            end
+            return false, "Entry schema already cached"
+        end
+        
+        -- Apply optimizations
+        local playerKeyResult, playerKeyMsg = enablePlayerKeyCaching()
+        local systemInfoResult, systemInfoMsg = enableSystemInfoCaching()
+        local schemaResult, schemaMsg = enableSchemaCaching()
+        
+        if playerKeyResult then
+            optimizationResults.cachingEnabled = true
+            table.insert(optimizationResults.functionsOptimized, "GetCurrentPlayerKey")
+            table.insert(optimizationResults.performanceGains, playerKeyMsg)
+        end
+        
+        if systemInfoResult then
+            table.insert(optimizationResults.functionsOptimized, "GetRealmName/GetBuildInfo")
+            table.insert(optimizationResults.performanceGains, systemInfoMsg)
+        end
+        
+        if schemaResult then
+            table.insert(optimizationResults.functionsOptimized, "GetEntrySchema")
+            table.insert(optimizationResults.performanceGains, schemaMsg)
+        end
+        
+        -- Memory optimization: Clean up old cache entries
+        local memoryOptimized = false
+        if performanceCache.lastPlayerKeyUpdate > 0 and 
+           (GetServerTime() - performanceCache.lastPlayerKeyUpdate) > 3600 then -- 1 hour
+            performanceCache.currentPlayerKey = nil
+            performanceCache.lastPlayerKeyUpdate = 0
+            memoryOptimized = true
+        end
+        
+        optimizationResults.memoryOptimized = memoryOptimized
+        optimizationResults.endTime = GetServerTime()
+        optimizationResults.duration = optimizationResults.endTime - optimizationResults.startTime
+        
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Database performance optimization completed", {
+                cachingEnabled = optimizationResults.cachingEnabled,
+                functionsOptimized = optimizationResults.functionsOptimized,
+                performanceGains = optimizationResults.performanceGains,
+                memoryOptimized = optimizationResults.memoryOptimized,
+                duration = optimizationResults.duration,
+                operation = "performance_optimization_complete"
+            })
+        end
+        
+        return true, optimizationResults
+        
+    end)
+end
+
+-- Optimized version of GetCurrentPlayerKey using performance cache
+function Database:GetCurrentPlayerKeyOptimized()
+    return self:SafeExecute("GetCurrentPlayerKeyOptimized", function()
+        
+        -- Use cached value if available and not expired (5 minutes)
+        if performanceCache.currentPlayerKey and 
+           performanceCache.lastPlayerKeyUpdate > 0 and
+           (GetServerTime() - performanceCache.lastPlayerKeyUpdate) < 300 then
+            
+            if SLH.Debug then
+                SLH.Debug:LogDebug("Database", "Using cached player key", {
+                    key = performanceCache.currentPlayerKey,
+                    cacheAge = GetServerTime() - performanceCache.lastPlayerKeyUpdate
+                })
+            end
+            
+            return true, performanceCache.currentPlayerKey
+        end
+        
+        -- Cache miss or expired - generate new key and cache it
+        local success, key = self:GetCurrentPlayerKey()
+        if success then
+            performanceCache.currentPlayerKey = key
+            performanceCache.lastPlayerKeyUpdate = GetServerTime()
+            
+            if SLH.Debug then
+                SLH.Debug:LogDebug("Database", "Generated and cached new player key", {
+                    key = key,
+                    cached = true
+                })
+            end
+        end
+        
+        return success, key
+        
+    end)
+end
+
+-- Optimized version of GetEntrySchema using performance cache
+function Database:GetEntrySchemaOptimized()
+    return self:SafeExecute("GetEntrySchemaOptimized", function()
+        
+        -- Use cached schema if available
+        if performanceCache.entrySchema then
+            -- Create a deep copy to prevent modifications to cached version
+            local schemaCopy = {
+                VenariiCharges = performanceCache.entrySchema.VenariiCharges,
+                Equipment = {},
+                LastUpdate = GetServerTime()
+            }
+            
+            -- Copy equipment slots
+            for slot, value in pairs(performanceCache.entrySchema.Equipment) do
+                schemaCopy.Equipment[slot] = value
+            end
+            
+            if SLH.Debug then
+                SLH.Debug:LogDebug("Database", "Using cached entry schema", {
+                    operation = "schema_cache_hit"
+                })
+            end
+            
+            return true, schemaCopy
+        end
+        
+        -- Cache miss - generate schema and cache it
+        local success, schema = self:GetEntrySchema()
+        if success then
+            -- Cache the schema for future use
+            performanceCache.entrySchema = {}
+            performanceCache.entrySchema.VenariiCharges = schema.VenariiCharges
+            performanceCache.entrySchema.Equipment = {}
+            for slot, value in pairs(schema.Equipment) do
+                performanceCache.entrySchema.Equipment[slot] = value
+            end
+            
+            if SLH.Debug then
+                SLH.Debug:LogDebug("Database", "Generated and cached entry schema", {
+                    operation = "schema_cached",
+                    slotsCount = #Database.EQUIPMENT_SLOTS
+                })
+            end
+        end
+        
+        return success, schema
+        
+    end)
+end
+
+-- Clear performance cache (for testing or manual cache invalidation)
+function Database:ClearPerformanceCache()
+    return self:SafeExecute("ClearPerformanceCache", function()
+        
+        local clearedItems = {}
+        
+        if performanceCache.currentPlayerKey then
+            table.insert(clearedItems, "currentPlayerKey")
+            performanceCache.currentPlayerKey = nil
+            performanceCache.lastPlayerKeyUpdate = 0
+        end
+        
+        if performanceCache.entrySchema then
+            table.insert(clearedItems, "entrySchema")
+            performanceCache.entrySchema = nil
+        end
+        
+        if performanceCache.realmName then
+            table.insert(clearedItems, "realmName")
+            performanceCache.realmName = nil
+        end
+        
+        if performanceCache.buildInfo.version then
+            table.insert(clearedItems, "buildInfo")
+            performanceCache.buildInfo = {}
+            performanceCache.lastBuildInfoUpdate = 0
+        end
+        
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Performance cache cleared", {
+                clearedItems = clearedItems,
+                itemCount = #clearedItems,
+                operation = "cache_clear"
+            })
+        end
+        
+        return true, {
+            clearedItems = clearedItems,
+            clearCount = #clearedItems
+        }
+        
+    end)
+end
+
+-- Get performance cache statistics
+function Database:GetPerformanceCacheStats()
+    return self:SafeExecute("GetPerformanceCacheStats", function()
+        
+        local stats = {
+            currentPlayerKey = {
+                cached = performanceCache.currentPlayerKey ~= nil,
+                age = performanceCache.lastPlayerKeyUpdate > 0 and 
+                      (GetServerTime() - performanceCache.lastPlayerKeyUpdate) or 0,
+                value = performanceCache.currentPlayerKey
+            },
+            entrySchema = {
+                cached = performanceCache.entrySchema ~= nil
+            },
+            realmName = {
+                cached = performanceCache.realmName ~= nil,
+                value = performanceCache.realmName
+            },
+            buildInfo = {
+                cached = performanceCache.buildInfo.version ~= nil,
+                age = performanceCache.lastBuildInfoUpdate > 0 and 
+                      (GetServerTime() - performanceCache.lastBuildInfoUpdate) or 0,
+                version = performanceCache.buildInfo.version
+            }
+        }
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "Performance cache statistics retrieved", {
+                playerKeyCached = stats.currentPlayerKey.cached,
+                playerKeyAge = stats.currentPlayerKey.age,
+                schemaCached = stats.entrySchema.cached,
+                realmNameCached = stats.realmName.cached,
+                buildInfoCached = stats.buildInfo.cached,
+                buildInfoAge = stats.buildInfo.age
+            })
+        end
+        
+        return true, stats
+        
+    end)
+end
+
+-- ============================================================================
 -- TASK 21: EVENT REGISTRATION & MODULE INTEGRATION
 -- ============================================================================
 

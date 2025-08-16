@@ -23,9 +23,10 @@ function SLH:Init()
         self.Debug:Init()
         self.Debug:StartSession()
         self.Debug:LogInfo("Core", "Addon initialized", { version = self.version })
-        self.Debug:LogInfo("Core", "Debug system integration testing available", { 
+        self.Debug:LogInfo("Core", "Debug system fully implemented with performance optimization", { 
             coreTests = { "/slh debuglog test core", "/slh debuglog test perf" },
             uiTests = { "/slh debuglog test ui", "/slh debuglog test workflow" },
+            optimization = { "/slh debuglog optimize run", "/slh debuglog optimize memory", "/slh debuglog optimize monitor" },
             comprehensiveTest = "/slh debuglog test all"
         })
     end
@@ -366,6 +367,21 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
                 print("|cff00ff00/slh debuglog test perf - Run performance validation|r")
                 print("|cff00ff00/slh debuglog test all - Run all integration tests|r")
             end
+        elseif args[2] == "optimize" or args[2] == "performance" then
+            -- Task 17: Performance Optimization Commands
+            if args[3] == "run" or args[3] == "apply" then
+                SLH.Debug:OptimizePerformance()
+            elseif args[3] == "memory" or args[3] == "mem" then
+                SLH.Debug:ManageMemory()
+            elseif args[3] == "monitor" then
+                local duration = tonumber(args[4]) or 30
+                SLH.Debug:MonitorPerformance(duration)
+            else
+                print("|cff00ff00=== SLH Debug Performance Optimization ===|r")
+                print("|cff00ff00/slh debuglog optimize run - Apply performance optimizations|r")
+                print("|cff00ff00/slh debuglog optimize memory - Manage memory usage|r")
+                print("|cff00ff00/slh debuglog optimize monitor [seconds] - Monitor performance|r")
+            end
         else
             print("|cff00ff00=== SLH Debug Commands ===|r")
             print("|cff00ff00/slh debuglog on/off - Enable/disable debug logging|r")
@@ -375,6 +391,7 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
             print("|cff00ff00/slh debuglog export - Export logs for bug report|r")
             print("|cff00ff00/slh debuglog stats - Show debug statistics|r")
             print("|cff00ff00/slh debuglog test - Integration testing commands|r")
+            print("|cff00ff00/slh debuglog optimize - Performance optimization commands|r")
         end
         return
     end

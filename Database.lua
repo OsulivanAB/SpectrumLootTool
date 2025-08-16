@@ -637,7 +637,9 @@ function Database:UpdateEntry(playerName, serverName, wowVersion, updateData)
     -- TODO: Log successful update with changed fields
 end
 
--- TODO: Retrieve player entry from database
+-- Retrieve player entry from database
+-- Returns entry data or nil if not found with safe null handling
+-- Provides comprehensive logging for retrieval attempts and results
 function Database:GetEntry(playerName, serverName, wowVersion)
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "GetEntry() called", {
@@ -647,10 +649,126 @@ function Database:GetEntry(playerName, serverName, wowVersion)
         })
     end
     
-    -- TODO: Generate key for lookup
-    -- TODO: Check if entry exists in database
-    -- TODO: Return entry data or nil if not found
-    -- TODO: Log retrieval attempt and result
+    -- Wrap entry retrieval in error handling
+    local success, result = SafeExecute(function()
+        return Database:_GetEntryInternal(playerName, serverName, wowVersion)
+    end, "GetEntry")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry retrieval failed", {
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion,
+                error = result
+            })
+        end
+        return nil -- Safe null handling on error
+    end
+    
+    return result
+end
+
+-- Internal entry retrieval logic (separated for error handling)
+function Database:_GetEntryInternal(playerName, serverName, wowVersion)
+    
+    -- Generate key for lookup
+    local key = self:GenerateKey(playerName, serverName, wowVersion)
+    if not key then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Failed to generate key for entry lookup", {
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion
+            })
+        end
+        return nil -- Safe null handling for invalid key
+    end
+    
+    -- Safe null handling - check if database structures exist
+    if not SpectrumLootHelperDB then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "SpectrumLootHelperDB not available for GetEntry", {
+                key = key,
+                playerName = playerName
+            })
+        end
+        return nil -- Safe null handling for missing database
+    end
+    
+    if not SpectrumLootHelperDB.playerData then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "playerData table not available for GetEntry", {
+                key = key,
+                playerName = playerName
+            })
+        end
+        return nil -- Safe null handling for missing player data table
+    end
+    
+    -- Check if entry exists in database
+    local entry = SpectrumLootHelperDB.playerData[key]
+    
+    if entry == nil then
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Entry not found in database", {
+                key = key,
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion,
+                found = false
+            })
+        end
+        return nil -- Entry not found - return nil as specified
+    end
+    
+    -- Validate entry structure before returning (safe null handling)
+    if type(entry) ~= "table" then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Entry exists but has invalid structure", {
+                key = key,
+                entry = entry,
+                entryType = type(entry),
+                expectedType = "table"
+            })
+        end
+        return nil -- Safe null handling for corrupted entry
+    end
+    
+    -- Optional: Validate entry against schema for data integrity
+    local entryValid, entryError = self:ValidateEntry(entry)
+    if not entryValid then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Retrieved entry failed validation", {
+                key = key,
+                entry = entry,
+                validationError = entryError,
+                returnedAnyway = true
+            })
+        end
+        -- Note: We still return the entry even if validation fails,
+        -- as the caller may want to handle or repair the data
+    end
+    
+    -- Log successful retrieval with entry details
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Successfully retrieved entry from database", {
+            key = key,
+            playerName = playerName,
+            serverName = serverName,
+            wowVersion = wowVersion,
+            found = true,
+            hasVenariiCharges = entry.VenariiCharges ~= nil,
+            hasEquipment = entry.Equipment ~= nil,
+            hasLastUpdate = entry.LastUpdate ~= nil,
+            venariiCharges = entry.VenariiCharges,
+            lastUpdate = entry.LastUpdate,
+            entryValid = entryValid
+        })
+    end
+    
+    -- Return entry data (never nil at this point due to earlier checks)
+    return entry
 end
 
 -- TODO: Delete player entry from database

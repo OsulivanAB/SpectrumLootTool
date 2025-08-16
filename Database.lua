@@ -3467,29 +3467,91 @@ function Database:GetSize()
 end
 
 -- ============================================================================
--- MODULE INITIALIZATION
+-- TASK 21: EVENT REGISTRATION & MODULE INTEGRATION
 -- ============================================================================
 
--- Register event handlers if needed for database management
+-- Database event frame for proper cleanup
+local DatabaseEventFrame = nil
+
+-- OnAddonLoaded event handler function
+-- Handles database initialization when addon loads
 local function OnAddonLoaded(event, addonName)
     if addonName == ADDON_NAME then
+        -- Initialize database when our addon loads
+        local initSuccess = Database:Init()
+        
         if SLH.Debug then
-            SLH.Debug:LogInfo("Database", "Database module loaded", {
+            SLH.Debug:LogInfo("Database", "Addon loaded event processed", {
+                addonName = addonName,
+                initSuccess = initSuccess,
                 version = Database.DB_VERSION,
-                slotsCount = #Database.EQUIPMENT_SLOTS
+                slotsCount = #Database.EQUIPMENT_SLOTS,
+                timestamp = GetServerTime()
             })
+        end
+        
+        -- Unregister the ADDON_LOADED event after successful initialization
+        -- This prevents multiple initialization calls
+        if DatabaseEventFrame and initSuccess then
+            DatabaseEventFrame:UnregisterEvent("ADDON_LOADED")
+            if SLH.Debug then
+                SLH.Debug:LogDebug("Database", "ADDON_LOADED event unregistered after init", {
+                    cleanup = "completed"
+                })
+            end
+        end
+        
+        -- Log initialization results
+        if initSuccess then
+            if SLH.Debug then
+                SLH.Debug:LogInfo("Database", "Database module initialization completed", {
+                    status = "ready",
+                    constants = {
+                        DB_VERSION = Database.DB_VERSION,
+                        EQUIPMENT_SLOTS_COUNT = #Database.EQUIPMENT_SLOTS
+                    }
+                })
+            end
+        else
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", "Database module initialization failed", {
+                    status = "failed",
+                    addonName = addonName
+                })
+            end
         end
     end
 end
 
--- Create event frame and register events for database initialization
-local DatabaseEventFrame = CreateFrame("Frame")
+-- Set up proper event frame and cleanup
+-- Register ADDON_LOADED event properly for database initialization
+DatabaseEventFrame = CreateFrame("Frame", "SLH_DatabaseEventFrame")
 DatabaseEventFrame:RegisterEvent("ADDON_LOADED")
 DatabaseEventFrame:SetScript("OnEvent", OnAddonLoaded)
 
--- Log that event frame has been set up
+-- Initialize Database constants logging
 if SLH.Debug then
-    SLH.Debug:LogDebug("Database", "Event frame registered", {
-        events = {"ADDON_LOADED"}
+    SLH.Debug:LogDebug("Database", "Event frame registered for database initialization", {
+        frameName = "SLH_DatabaseEventFrame",
+        events = {"ADDON_LOADED"},
+        constants = {
+            DB_VERSION = Database.DB_VERSION,
+            EQUIPMENT_SLOTS = Database.EQUIPMENT_SLOTS
+        },
+        handler = "OnAddonLoaded"
     })
+end
+
+-- Store cleanup function for proper module shutdown
+Database.CleanupEventHandlers = function()
+    if DatabaseEventFrame then
+        DatabaseEventFrame:UnregisterAllEvents()
+        DatabaseEventFrame:SetScript("OnEvent", nil)
+        DatabaseEventFrame = nil
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "Database event handlers cleaned up", {
+                cleanup = "completed"
+            })
+        end
+    end
 end

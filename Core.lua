@@ -382,6 +382,9 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
                 print("|cff00ff00/slh debuglog optimize memory - Manage memory usage|r")
                 print("|cff00ff00/slh debuglog optimize monitor [seconds] - Monitor performance|r")
             end
+        elseif args[2] == "verify" or args[2] == "completeness" or args[2] == "check" then
+            -- Task 18: Debug System Completeness Verification
+            SLH.Debug:RunCompletenessVerification()
         else
             print("|cff00ff00=== SLH Debug Commands ===|r")
             print("|cff00ff00/slh debuglog on/off - Enable/disable debug logging|r")
@@ -392,6 +395,7 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
             print("|cff00ff00/slh debuglog stats - Show debug statistics|r")
             print("|cff00ff00/slh debuglog test - Integration testing commands|r")
             print("|cff00ff00/slh debuglog optimize - Performance optimization commands|r")
+            print("|cff00ff00/slh debuglog verify - Run completeness verification|r")
         end
         return
     end

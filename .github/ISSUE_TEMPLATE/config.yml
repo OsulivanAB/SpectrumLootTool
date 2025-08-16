@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/OsulivanAB/SpectrumLootTool/blob/main/README.md
+    about: Check the documentation for installation and usage instructions
+  - name: 💬 WoW Guild Discussion
+    url: https://github.com/OsulivanAB/SpectrumLootTool/discussions
+    about: General questions and discussions about the addon
+  - name: 🐛 Debug Commands Help
+    url: https://github.com/OsulivanAB/SpectrumLootTool/blob/main/README.md#debug-commands
+    about: Learn how to use debug commands before reporting issues

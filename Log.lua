@@ -8,8 +8,17 @@ SLH.Log = {
 
 -- Initialize the log system
 function SLH.Log:Init()
+    SLH.Debug:LogInfo("Log", "Initializing log system", {
+        version = self.version
+    })
+    
     -- Initialize WoW version detection and caching
-    self:GetCurrentWoWVersion()
+    local wowVersion = self:GetCurrentWoWVersion()
+    
+    SLH.Debug:LogInfo("Log", "Log system initialized", {
+        version = self.version,
+        detectedWoWVersion = wowVersion
+    })
     
     -- Placeholder for additional log system initialization
     -- Will handle:
@@ -21,12 +30,24 @@ end
 function SLH.Log:GetCurrentWoWVersion()
     -- Use cached version if already detected
     if self.currentWoWVersion then
+        SLH.Debug:LogDebug("Log", "Using cached WoW version", {
+            cachedVersion = self.currentWoWVersion
+        })
         return self.currentWoWVersion
     end
+    
+    SLH.Debug:LogDebug("Log", "Detecting WoW version", {})
     
     -- Detect and cache WoW version using WoW API
     local success, result = pcall(function()
         local version, build, date, tocversion = GetBuildInfo()
+        
+        SLH.Debug:LogDebug("Log", "GetBuildInfo results", {
+            version = version,
+            build = build,
+            date = date,
+            tocversion = tocversion
+        })
         
         -- Extract major.minor version from full version string
         -- Example: "10.2.5.52902" -> "10.2"
@@ -53,11 +74,19 @@ function SLH.Log:GetCurrentWoWVersion()
     if success and result then
         -- Cache the detected version
         self.currentWoWVersion = result
+        SLH.Debug:LogInfo("Log", "WoW version detected and cached", {
+            detectedVersion = result
+        })
         return result
     else
         -- Error handling: return fallback version
         local fallbackVersion = "unknown"
         self.currentWoWVersion = fallbackVersion
+        
+        SLH.Debug:LogError("Log", "Failed to detect WoW version, using fallback", {
+            fallbackVersion = fallbackVersion,
+            error = result
+        })
         
         -- Optional debug output (can be removed in production)
         if SLH and SLH.debugLog then
@@ -160,6 +189,30 @@ end
 
 -- Add a new log entry for roll count changes
 function SLH.Log:AddEntry(playerName, officerName, newValue, oldValue)
+    if not playerName or not officerName then
+        SLH.Debug:LogError("Log", "Invalid parameters for log entry", {
+            playerName = playerName,
+            officerName = officerName,
+            newValue = newValue,
+            oldValue = oldValue
+        })
+        return false
+    end
+    
+    local timestamp = GetServerTime()
+    local logEntryID = self:GenerateLogEntryID(timestamp, playerName, officerName)
+    local wowVersion = self:GetCurrentWoWVersion()
+    
+    SLH.Debug:LogInfo("Log", "Adding new log entry", {
+        playerName = playerName,
+        officerName = officerName,
+        newValue = newValue,
+        oldValue = oldValue,
+        timestamp = timestamp,
+        logEntryID = logEntryID,
+        wowVersion = wowVersion
+    })
+    
     -- Placeholder for adding log entries
     -- Parameters:
     -- - playerName: The player whose roll count changed
@@ -190,6 +243,20 @@ end
 
 -- Get log entries for a specific player
 function SLH.Log:GetPlayerEntries(playerName, wowVersion)
+    if not playerName then
+        SLH.Debug:LogError("Log", "GetPlayerEntries called with invalid player name", {
+            playerName = playerName
+        })
+        return {}
+    end
+    
+    local targetVersion = wowVersion or self:GetCurrentWoWVersion()
+    
+    SLH.Debug:LogDebug("Log", "Retrieving player log entries", {
+        playerName = playerName,
+        wowVersion = targetVersion
+    })
+    
     -- Placeholder for retrieving player-specific log entries
     -- Parameters:
     -- - playerName: Player to get entries for
@@ -366,6 +433,12 @@ end
 
 -- Recalculate roll counts from log history
 function SLH.Log:RecalculateRollCounts(wowVersion)
+    local targetVersion = wowVersion or self:GetCurrentWoWVersion()
+    
+    SLH.Debug:LogInfo("Log", "Starting roll count recalculation", {
+        wowVersion = targetVersion
+    })
+    
     -- Placeholder for recalculating roll counts from log
     -- Will process all log entries to rebuild current roll count state
     -- This ensures data consistency and supports offline changes
@@ -384,5 +457,14 @@ function SLH.Log:RecalculateRollCounts(wowVersion)
     
     -- Will return table of current roll counts by player name:
     -- { ["PlayerName"] = currentRollCount, ... }
-    return {}
+    
+    local rollCounts = {}
+    
+    SLH.Debug:LogInfo("Log", "Roll count recalculation completed", {
+        wowVersion = targetVersion,
+        playerCount = 0, -- Will be updated when implementation is complete
+        rollCounts = rollCounts
+    })
+    
+    return rollCounts
 end

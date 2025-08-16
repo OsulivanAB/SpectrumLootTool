@@ -42,21 +42,44 @@ end
 function SLH:IsEnabled()
     local inRaid = IsInRaid()
     local inCombat = UnitAffectingCombat("player")
-    if self.db.settings.allowOutsideRaid then
-        return not inCombat
+    local allowOutsideRaid = self.db.settings.allowOutsideRaid
+    
+    local enabled = false
+    if allowOutsideRaid then
+        enabled = not inCombat
+    else
+        enabled = inRaid and not inCombat
     end
-    return inRaid and not inCombat
+    
+    self.Debug:LogDebug("Core", "Addon enablement check", {
+        inRaid = inRaid,
+        inCombat = inCombat,
+        allowOutsideRaid = allowOutsideRaid,
+        enabled = enabled
+    })
+    
+    return enabled
 end
 
 -- Determine if the given unit is an officer in Spectrum Federation
 function SLH:IsOfficer(unit)
     unit = unit or "player"
     
+    self.Debug:LogDebug("Core", "Checking officer status", {
+        unit = unit
+    })
+    
     -- First, try GetGuildInfo which is the most reliable when available
     local guild, _, rankIndex = GetGuildInfo(unit)
     
     -- If GetGuildInfo fails, try alternative guild detection methods
     if not guild or not rankIndex then
+        self.Debug:LogDebug("Core", "GetGuildInfo failed, trying alternative methods", {
+            unit = unit,
+            guild = guild,
+            rankIndex = rankIndex
+        })
+        
         -- Try guild roster approach for player unit
         if unit == "player" and IsInGuild() then
             local numGuildMembers = GetNumGuildMembers()
@@ -65,6 +88,11 @@ function SLH:IsOfficer(unit)
                 if name and name == UnitName("player") then
                     guild = GetGuildInfo("player") or "Spectrum Federation"  -- fallback
                     rankIndex = rankIndex2
+                    self.Debug:LogDebug("Core", "Found player in guild roster", {
+                        playerName = name,
+                        guild = guild,
+                        rankIndex = rankIndex
+                    })
                     break
                 end
             end
@@ -73,6 +101,9 @@ function SLH:IsOfficer(unit)
     
     -- If still no guild data, return false but with debug info
     if not guild then
+        self.Debug:LogWarn("Core", "No guild data found for unit", {
+            unit = unit
+        })
         if self.debugOfficer then
             print("|cffff0000SLH Debug: No guild data found for " .. (unit or "nil") .. "|r")
         end
@@ -80,6 +111,10 @@ function SLH:IsOfficer(unit)
     end
     
     if not rankIndex then
+        self.Debug:LogWarn("Core", "No rank index found for unit", {
+            unit = unit,
+            guild = guild
+        })
         if self.debugOfficer then
             print("|cffff0000SLH Debug: No rank index found for " .. (unit or "nil") .. " in guild " .. guild .. "|r")
         end
@@ -97,6 +132,15 @@ function SLH:IsOfficer(unit)
     end
     
     local isOfficer = isSpectrumFed and rankIndex <= self.OFFICER_RANK
+    
+    self.Debug:LogDebug("Core", "Officer status determined", {
+        unit = unit,
+        guild = guild,
+        rankIndex = rankIndex,
+        isSpectrumFed = isSpectrumFed,
+        isOfficer = isOfficer,
+        officerRankThreshold = self.OFFICER_RANK
+    })
     
     -- Debug output (can be enabled for troubleshooting)
     if self.debugOfficer then
@@ -121,14 +165,27 @@ end
 
 -- Force refresh of officer status and UI
 function SLH:RefreshOfficerStatus()
+    self.Debug:LogInfo("Core", "Refreshing officer status", {
+        frameExists = self.frame ~= nil,
+        frameShown = self.frame and self.frame:IsShown() or false
+    })
+    
     if self.frame and self.frame:IsShown() then
         self:UpdateRoster()
         print("|cff00ff00SLH: Officer status refreshed|r")
+        self.Debug:LogDebug("Core", "Officer status refresh completed", {})
+    else
+        self.Debug:LogDebug("Core", "Officer status refresh skipped - frame not shown", {})
     end
 end
 
 -- Recalculate all roll values from the complete log history
 function SLH:RecalculateFromLog()
+    self.Debug:LogInfo("Core", "Starting roll recalculation from log", {
+        currentRollCount = self.db.rolls and table.getn(self.db.rolls) or 0,
+        logEntryCount = self.db.log and #self.db.log or 0
+    })
+    
     -- Clear current rolls
     self.db.rolls = {}
     
@@ -139,12 +196,23 @@ function SLH:RecalculateFromLog()
     end
     table.sort(sortedLog, function(a, b) return a.time < b.time end)
     
+    self.Debug:LogDebug("Core", "Log entries sorted chronologically", {
+        sortedEntryCount = #sortedLog
+    })
+    
     -- Recalculate values by applying each log entry in chronological order
+    local processedEntries = 0
     for _, entry in ipairs(sortedLog) do
         if entry.player and entry.value then
             self.db.rolls[entry.player] = entry.value
+            processedEntries = processedEntries + 1
         end
     end
+    
+    self.Debug:LogInfo("Core", "Roll recalculation completed", {
+        processedEntries = processedEntries,
+        finalRollCount = self.db.rolls and table.getn(self.db.rolls) or 0
+    })
 end
 
 -- Adjust a player's roll count and record the change

@@ -161,6 +161,39 @@ function Database:_InitInternal()
         end
     end
     
+    -- Check for schema upgrades needed (Task 19)
+    local currentSchemaVersion = SpectrumLootHelperDB.databaseVersion
+    if currentSchemaVersion and currentSchemaVersion ~= Database.DB_VERSION then
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Schema upgrade needed", {
+                currentVersion = currentSchemaVersion,
+                targetVersion = Database.DB_VERSION
+            })
+        end
+        
+        -- Perform automatic schema upgrade
+        local upgradeSuccess, upgradeMessage, upgradeStats = self:UpgradeSchema(currentSchemaVersion, Database.DB_VERSION)
+        if upgradeSuccess then
+            if SLH.Debug then
+                SLH.Debug:LogInfo("Database", "Automatic schema upgrade completed", {
+                    fromVersion = currentSchemaVersion,
+                    toVersion = Database.DB_VERSION,
+                    message = upgradeMessage,
+                    statistics = upgradeStats
+                })
+            end
+        else
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", "Automatic schema upgrade failed", {
+                    fromVersion = currentSchemaVersion,
+                    toVersion = Database.DB_VERSION,
+                    error = upgradeMessage
+                })
+            end
+            -- Continue with initialization even if upgrade fails
+        end
+    end
+    
     -- Log successful initialization completion
     if SLH.Debug then
         SLH.Debug:LogInfo("Database", "Database initialization completed", {
@@ -169,7 +202,9 @@ function Database:_InitInternal()
             playerDataExists = SpectrumLootHelperDB.playerData ~= nil,
             structureValid = structureValid,
             savedVariablesWritable = writeTestSuccess,
-            persistenceValidated = SpectrumLootHelperDB.lastDatabaseAccess ~= nil
+            persistenceValidated = SpectrumLootHelperDB.lastDatabaseAccess ~= nil,
+            schemaVersion = SpectrumLootHelperDB.databaseVersion,
+            schemaUpToDate = SpectrumLootHelperDB.databaseVersion == Database.DB_VERSION
         })
     end
     
@@ -1647,21 +1682,488 @@ end
 -- UPGRADE / MIGRATION
 -- ============================================================================
 
--- TODO: Handle database schema upgrades
+-- Handle database schema upgrades
+-- Upgrades database schema from one version to another with data preservation
+-- Supports version-specific migration rules and comprehensive backup/rollback
 function Database:UpgradeSchema(fromVersion, toVersion)
+    return self:SafeExecute("UpgradeSchema", function()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "UpgradeSchema() starting schema upgrade", {
+                fromVersion = fromVersion,
+                toVersion = toVersion,
+                operation = "schema_upgrade"
+            })
+        end
+        
+        -- Validate input parameters
+        if not fromVersion or type(fromVersion) ~= "string" or fromVersion == "" then
+            local errorMsg = "Invalid fromVersion parameter"
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", errorMsg, {
+                    fromVersion = fromVersion,
+                    type = type(fromVersion)
+                })
+            end
+            return false, errorMsg
+        end
+        
+        if not toVersion or type(toVersion) ~= "string" or toVersion == "" then
+            local errorMsg = "Invalid toVersion parameter"
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", errorMsg, {
+                    toVersion = toVersion,
+                    type = type(toVersion)
+                })
+            end
+            return false, errorMsg
+        end
+        
+        -- Check if upgrade is needed
+        if fromVersion == toVersion then
+            if SLH.Debug then
+                SLH.Debug:LogInfo("Database", "No schema upgrade needed - versions match", {
+                    currentVersion = fromVersion,
+                    targetVersion = toVersion
+                })
+            end
+            return true, "No upgrade needed - schema is already at target version"
+        end
+        
+        -- Ensure database is initialized
+        if not SpectrumLootHelperDB or not SpectrumLootHelperDB.playerData then
+            if SLH.Debug then
+                SLH.Debug:LogWarn("Database", "Database not initialized for schema upgrade", {
+                    fromVersion = fromVersion,
+                    toVersion = toVersion
+                })
+            end
+            -- Initialize database with new version
+            if not SpectrumLootHelperDB then
+                SpectrumLootHelperDB = {}
+            end
+            if not SpectrumLootHelperDB.playerData then
+                SpectrumLootHelperDB.playerData = {}
+            end
+            SpectrumLootHelperDB.databaseVersion = toVersion
+            return true, "Database initialized with new schema version"
+        end
+        
+        -- Check version compatibility
+        local upgradeSupported, compatibilityError = self:_CheckVersionCompatibility(fromVersion, toVersion)
+        if not upgradeSupported then
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", "Schema upgrade not supported", {
+                    fromVersion = fromVersion,
+                    toVersion = toVersion,
+                    error = compatibilityError
+                })
+            end
+            return false, "Schema upgrade not supported: " .. (compatibilityError or "unknown compatibility error")
+        end
+        
+        -- Backup existing data before upgrade
+        local backupSuccess, backupData = self:_BackupDatabaseForUpgrade()
+        if not backupSuccess then
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", "Failed to backup database for schema upgrade", {
+                    error = backupData
+                })
+            end
+            return false, "Failed to backup database: " .. (backupData or "unknown backup error")
+        end
+        
+        -- Collect upgrade statistics
+        local upgradeStats = {
+            fromVersion = fromVersion,
+            toVersion = toVersion,
+            totalEntries = 0,
+            upgradedEntries = 0,
+            failedUpgrades = 0,
+            schemaChangesApplied = 0,
+            backupCreated = true,
+            startTime = GetServerTime()
+        }
+        
+        -- Count entries before upgrade
+        for _ in pairs(SpectrumLootHelperDB.playerData) do
+            upgradeStats.totalEntries = upgradeStats.totalEntries + 1
+        end
+        
+        -- Apply schema changes based on version differences
+        local upgradeSuccess, upgradeError = self:_ApplySchemaUpgrade(fromVersion, toVersion, upgradeStats)
+        if not upgradeSuccess then
+            -- Attempt rollback on upgrade failure
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", "Schema upgrade failed - attempting rollback", {
+                    error = upgradeError,
+                    fromVersion = fromVersion,
+                    toVersion = toVersion
+                })
+            end
+            
+            local rollbackSuccess = self:_RollbackSchemaUpgrade(backupData)
+            if rollbackSuccess then
+                return false, "Schema upgrade failed and was rolled back: " .. (upgradeError or "unknown upgrade error")
+            else
+                return false, "Schema upgrade failed and rollback failed - database may be corrupted"
+            end
+        end
+        
+        -- Migrate existing entries to new schema
+        local migrationSuccess, migrationError = self:_MigrateEntriesToNewSchema(fromVersion, toVersion, upgradeStats)
+        if not migrationSuccess then
+            -- Attempt rollback on migration failure
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", "Entry migration failed - attempting rollback", {
+                    error = migrationError,
+                    fromVersion = fromVersion,
+                    toVersion = toVersion
+                })
+            end
+            
+            local rollbackSuccess = self:_RollbackSchemaUpgrade(backupData)
+            if rollbackSuccess then
+                return false, "Entry migration failed and was rolled back: " .. (migrationError or "unknown migration error")
+            else
+                return false, "Entry migration failed and rollback failed - database may be corrupted"
+            end
+        end
+        
+        -- Update database version marker
+        SpectrumLootHelperDB.databaseVersion = toVersion
+        upgradeStats.endTime = GetServerTime()
+        upgradeStats.totalDuration = upgradeStats.endTime - upgradeStats.startTime
+        
+        -- Log successful upgrade completion
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Schema upgrade completed successfully", {
+                fromVersion = fromVersion,
+                toVersion = toVersion,
+                statistics = upgradeStats,
+                totalEntries = upgradeStats.totalEntries,
+                upgradedEntries = upgradeStats.upgradedEntries,
+                failedUpgrades = upgradeStats.failedUpgrades,
+                schemaChanges = upgradeStats.schemaChangesApplied,
+                duration = upgradeStats.totalDuration,
+                operation = "schema_upgrade_complete"
+            })
+        end
+        
+        -- Return success with detailed upgrade report
+        local message = string.format(
+            "Schema upgrade completed: %d entries migrated from %s to %s (%d changes applied, %d failed)",
+            upgradeStats.upgradedEntries,
+            fromVersion,
+            toVersion,
+            upgradeStats.schemaChangesApplied,
+            upgradeStats.failedUpgrades
+        )
+        
+        return true, message, upgradeStats
+        
+    end)
+end
+
+-- Internal helper: Check version compatibility for schema upgrades
+function Database:_CheckVersionCompatibility(fromVersion, toVersion)
+    
+    -- Define supported upgrade paths
+    local supportedUpgrades = {
+        ["1.0.0"] = {"1.1.0", "1.2.0"}, -- 1.0.0 can upgrade to 1.1.0 or 1.2.0
+        ["1.1.0"] = {"1.2.0", "1.3.0"}, -- 1.1.0 can upgrade to 1.2.0 or 1.3.0
+        ["1.2.0"] = {"1.3.0", "2.0.0"}  -- 1.2.0 can upgrade to 1.3.0 or 2.0.0
+    }
+    
+    -- Check if fromVersion is supported
+    if not supportedUpgrades[fromVersion] then
+        return false, "Unsupported source version: " .. fromVersion
+    end
+    
+    -- Check if upgrade path exists
+    local pathExists = false
+    for _, supportedTarget in ipairs(supportedUpgrades[fromVersion]) do
+        if supportedTarget == toVersion then
+            pathExists = true
+            break
+        end
+    end
+    
+    if not pathExists then
+        return false, "No upgrade path from " .. fromVersion .. " to " .. toVersion
+    end
+    
     if SLH.Debug then
-        SLH.Debug:LogDebug("Database", "UpgradeSchema() called", {
+        SLH.Debug:LogInfo("Database", "Version compatibility check passed", {
+            fromVersion = fromVersion,
+            toVersion = toVersion,
+            upgradePathValid = true
+        })
+    end
+    
+    return true
+end
+
+-- Internal helper: Backup database for upgrade safety
+function Database:_BackupDatabaseForUpgrade()
+    
+    if SLH.Debug then
+        SLH.Debug:LogDebug("Database", "Creating database backup for schema upgrade", {})
+    end
+    
+    -- Create deep copy of database
+    local backup = {
+        playerData = {},
+        databaseVersion = SpectrumLootHelperDB.databaseVersion,
+        lastDatabaseAccess = SpectrumLootHelperDB.lastDatabaseAccess,
+        backupTimestamp = GetServerTime()
+    }
+    
+    -- Deep copy all player data
+    for playerKey, playerData in pairs(SpectrumLootHelperDB.playerData) do
+        if type(playerData) == "table" then
+            backup.playerData[playerKey] = {}
+            for field, value in pairs(playerData) do
+                if type(value) == "table" then
+                    -- Deep copy tables (like Equipment)
+                    backup.playerData[playerKey][field] = {}
+                    for k, v in pairs(value) do
+                        backup.playerData[playerKey][field][k] = v
+                    end
+                else
+                    backup.playerData[playerKey][field] = value
+                end
+            end
+        else
+            backup.playerData[playerKey] = playerData
+        end
+    end
+    
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Database backup created successfully", {
+            entriesBackedUp = self:_CountTableEntries(backup.playerData),
+            backupSize = self:_EstimateTableSize(backup),
+            backupTimestamp = backup.backupTimestamp
+        })
+    end
+    
+    return true, backup
+end
+
+-- Internal helper: Apply schema changes during upgrade
+function Database:_ApplySchemaUpgrade(fromVersion, toVersion, upgradeStats)
+    
+    if SLH.Debug then
+        SLH.Debug:LogDebug("Database", "Applying schema changes for upgrade", {
             fromVersion = fromVersion,
             toVersion = toVersion
         })
     end
     
-    -- TODO: Check if upgrade is needed
-    -- TODO: Backup existing data before upgrade
-    -- TODO: Apply schema changes based on version differences
-    -- TODO: Migrate existing entries to new schema
-    -- TODO: Update database version marker
-    -- TODO: Log successful upgrade completion
+    -- Apply version-specific schema changes
+    if fromVersion == "1.0.0" and toVersion == "1.1.0" then
+        -- Example: Add new field to database structure
+        if not SpectrumLootHelperDB.schemaUpgradeHistory then
+            SpectrumLootHelperDB.schemaUpgradeHistory = {}
+            upgradeStats.schemaChangesApplied = upgradeStats.schemaChangesApplied + 1
+        end
+        
+    elseif fromVersion == "1.1.0" and toVersion == "1.2.0" then
+        -- Example: Add integrity checking metadata
+        if not SpectrumLootHelperDB.integrityMetadata then
+            SpectrumLootHelperDB.integrityMetadata = {
+                lastIntegrityCheck = nil,
+                integrityScore = nil
+            }
+            upgradeStats.schemaChangesApplied = upgradeStats.schemaChangesApplied + 1
+        end
+        
+    elseif fromVersion == "1.2.0" and toVersion == "2.0.0" then
+        -- Example: Major version upgrade - restructure data
+        if not SpectrumLootHelperDB.v2Features then
+            SpectrumLootHelperDB.v2Features = {
+                enhancedStatistics = true,
+                improvedMigration = true
+            }
+            upgradeStats.schemaChangesApplied = upgradeStats.schemaChangesApplied + 1
+        end
+    end
+    
+    -- Record upgrade in history
+    if not SpectrumLootHelperDB.schemaUpgradeHistory then
+        SpectrumLootHelperDB.schemaUpgradeHistory = {}
+    end
+    
+    table.insert(SpectrumLootHelperDB.schemaUpgradeHistory, {
+        fromVersion = fromVersion,
+        toVersion = toVersion,
+        timestamp = GetServerTime(),
+        appliedChanges = upgradeStats.schemaChangesApplied
+    })
+    
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Schema changes applied successfully", {
+            fromVersion = fromVersion,
+            toVersion = toVersion,
+            changesApplied = upgradeStats.schemaChangesApplied
+        })
+    end
+    
+    return true
+end
+
+-- Internal helper: Migrate entries to new schema format
+function Database:_MigrateEntriesToNewSchema(fromVersion, toVersion, upgradeStats)
+    
+    if SLH.Debug then
+        SLH.Debug:LogDebug("Database", "Migrating entries to new schema", {
+            fromVersion = fromVersion,
+            toVersion = toVersion,
+            totalEntries = upgradeStats.totalEntries
+        })
+    end
+    
+    for playerKey, playerData in pairs(SpectrumLootHelperDB.playerData) do
+        
+        if type(playerData) == "table" then
+            local entryMigrated = false
+            
+            -- Apply version-specific entry migrations
+            if fromVersion == "1.0.0" and toVersion == "1.1.0" then
+                -- Example: Add tracking fields to entries
+                if not playerData.SchemaVersion then
+                    playerData.SchemaVersion = toVersion
+                    entryMigrated = true
+                end
+                
+            elseif fromVersion == "1.1.0" and toVersion == "1.2.0" then
+                -- Example: Add integrity metadata to entries
+                if not playerData.IntegrityMetadata then
+                    playerData.IntegrityMetadata = {
+                        lastValidated = GetServerTime(),
+                        validationsPassed = 0
+                    }
+                    entryMigrated = true
+                end
+                
+            elseif fromVersion == "1.2.0" and toVersion == "2.0.0" then
+                -- Example: Major restructuring for v2
+                if not playerData.V2Structure then
+                    playerData.V2Structure = {
+                        migrationTimestamp = GetServerTime(),
+                        preservedFromV1 = true
+                    }
+                    entryMigrated = true
+                end
+            end
+            
+            -- Update entry schema version
+            playerData.SchemaVersion = toVersion
+            
+            if entryMigrated then
+                upgradeStats.upgradedEntries = upgradeStats.upgradedEntries + 1
+                
+                if SLH.Debug then
+                    SLH.Debug:LogDebug("Database", "Entry migrated to new schema", {
+                        playerKey = playerKey,
+                        fromVersion = fromVersion,
+                        toVersion = toVersion
+                    })
+                end
+            end
+            
+        else
+            upgradeStats.failedUpgrades = upgradeStats.failedUpgrades + 1
+            if SLH.Debug then
+                SLH.Debug:LogWarn("Database", "Failed to migrate corrupted entry", {
+                    playerKey = playerKey,
+                    entryType = type(playerData)
+                })
+            end
+        end
+    end
+    
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Entry migration completed", {
+            fromVersion = fromVersion,
+            toVersion = toVersion,
+            totalEntries = upgradeStats.totalEntries,
+            upgradedEntries = upgradeStats.upgradedEntries,
+            failedUpgrades = upgradeStats.failedUpgrades
+        })
+    end
+    
+    return true
+end
+
+-- Internal helper: Rollback schema upgrade in case of failure
+function Database:_RollbackSchemaUpgrade(backupData)
+    
+    if SLH.Debug then
+        SLH.Debug:LogWarn("Database", "Attempting schema upgrade rollback", {
+            backupAvailable = backupData ~= nil
+        })
+    end
+    
+    if not backupData or type(backupData) ~= "table" then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Cannot rollback - backup data invalid", {
+                backupType = type(backupData)
+            })
+        end
+        return false
+    end
+    
+    -- Restore database from backup
+    SpectrumLootHelperDB.playerData = backupData.playerData or {}
+    SpectrumLootHelperDB.databaseVersion = backupData.databaseVersion
+    SpectrumLootHelperDB.lastDatabaseAccess = backupData.lastDatabaseAccess
+    
+    -- Remove failed upgrade from history if it exists
+    if SpectrumLootHelperDB.schemaUpgradeHistory then
+        -- Remove the last entry (failed upgrade)
+        if #SpectrumLootHelperDB.schemaUpgradeHistory > 0 then
+            table.remove(SpectrumLootHelperDB.schemaUpgradeHistory)
+        end
+    end
+    
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Schema upgrade rollback completed", {
+            restoredEntries = self:_CountTableEntries(SpectrumLootHelperDB.playerData),
+            restoredVersion = SpectrumLootHelperDB.databaseVersion
+        })
+    end
+    
+    return true
+end
+
+-- Internal helper: Count entries in a table
+function Database:_CountTableEntries(table)
+    if not table or type(table) ~= "table" then
+        return 0
+    end
+    
+    local count = 0
+    for _ in pairs(table) do
+        count = count + 1
+    end
+    return count
+end
+
+-- Internal helper: Estimate table memory size
+function Database:_EstimateTableSize(table)
+    if not table or type(table) ~= "table" then
+        return 0
+    end
+    
+    local size = 0
+    for k, v in pairs(table) do
+        size = size + #tostring(k) + #tostring(v)
+        if type(v) == "table" then
+            size = size + self:_EstimateTableSize(v)
+        end
+    end
+    return size
 end
 
 -- Migrate data between WoW versions

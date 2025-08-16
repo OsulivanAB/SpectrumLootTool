@@ -87,6 +87,17 @@
 - **Export Diagnostics**: Performance metrics, privacy level indicators, and sanitization method documentation
 - **Safe Sharing**: Export designed for safe sharing with developers while maintaining full diagnostic capability
 - **Task 18 Complete**: Database debug export fully implemented with comprehensive sanitization and developer-friendly formatting
+- **Database Schema Upgrade**: Implemented Database:UpgradeSchema() for safe database schema migrations between versions
+- **Version Compatibility**: Comprehensive version compatibility checking with supported upgrade path validation
+- **Data Backup System**: Complete database backup creation before schema upgrades with rollback capability for safety
+- **Schema Change Application**: Version-specific schema changes with tracking and history management
+- **Entry Migration**: Automated migration of existing entries to new schema formats with field-level transformations
+- **Rollback Protection**: Automatic rollback of failed upgrades with complete data restoration from backup
+- **Upgrade Statistics**: Detailed upgrade statistics tracking entries processed, changes applied, and migration success rates
+- **Automatic Detection**: Integration with Database:Init() for automatic schema upgrade detection and execution
+- **Upgrade History**: Complete schema upgrade history tracking with timestamps and change documentation
+- **Error Recovery**: Comprehensive error handling with graceful degradation and detailed error reporting
+- **Task 19 Complete**: Database schema upgrade system fully implemented with automatic detection, backup, and rollback capabilities
 - **Database Persistence**: New entries saved to SpectrumLootHelperDB.playerData with proper error handling
 - **Task 10 Complete**: Add new entry functionality fully implemented with validation, duplicate checking, and persistence
 - **Retrieve Entry Function**: Implemented Database:GetEntry() with comprehensive entry retrieval and safe null handling

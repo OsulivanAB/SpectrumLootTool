@@ -245,17 +245,67 @@ function Database:GenerateKey(playerName, serverName, wowVersion)
     return key
 end
 
--- TODO: Get current player's database key
+-- Get current player's database key
+-- Uses WoW APIs to get player name, server name, and WoW version
+-- Handles loading states gracefully and returns generated key
 function Database:GetCurrentPlayerKey()
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "GetCurrentPlayerKey() called", {})
     end
     
-    -- TODO: Get current player name from WoW API
-    -- TODO: Get current server name from WoW API  
-    -- TODO: Get current WoW version from WoW API
-    -- TODO: Call GenerateKey() with current player info
-    -- TODO: Return generated key
+    -- Get current player name from WoW API
+    local playerName = UnitName("player")
+    if not playerName or playerName == "" then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Player name not available yet", {
+                playerName = playerName,
+                loading = true
+            })
+        end
+        return nil -- Handle loading state gracefully
+    end
+    
+    -- Get current server name from WoW API
+    local serverName = GetRealmName()
+    if not serverName or serverName == "" then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Server name not available yet", {
+                serverName = serverName,
+                loading = true
+            })
+        end
+        return nil -- Handle loading state gracefully
+    end
+    
+    -- Get current WoW version from WoW API
+    local wowVersion, buildNumber, buildDate, gameVersion = GetBuildInfo()
+    if not wowVersion or wowVersion == "" then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "WoW version not available yet", {
+                wowVersion = wowVersion,
+                loading = true
+            })
+        end
+        return nil -- Handle loading state gracefully
+    end
+    
+    -- Call GenerateKey() with current player info
+    local key = self:GenerateKey(playerName, serverName, wowVersion)
+    
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Current player key generated", {
+            playerName = playerName,
+            serverName = serverName,
+            wowVersion = wowVersion,
+            buildNumber = buildNumber,
+            gameVersion = gameVersion,
+            generatedKey = key,
+            success = key ~= nil
+        })
+    end
+    
+    -- Return generated key
+    return key
 end
 
 -- ============================================================================

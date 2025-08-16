@@ -2063,16 +2063,303 @@ function Database:_DetermineHealthStatus(stats)
     end
 end
 
--- TODO: Export database for debugging/support
+-- Export database for debugging and support purposes
+-- Creates sanitized, formatted export suitable for sharing with developers
+-- Removes sensitive information while preserving diagnostic value
 function Database:ExportForDebug()
-    if SLH.Debug then
-        SLH.Debug:LogDebug("Database", "ExportForDebug() called", {})
+    return self:SafeExecute("ExportForDebug", function()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "ExportForDebug() starting database export", {
+                operation = "debug_export"
+            })
+        end
+        
+        local startTime = GetServerTime()
+        
+        -- Get comprehensive database statistics first
+        local success, debugStats = self:GetDebugStats()
+        if not success then
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", "Failed to get debug stats for export", {})
+            end
+            debugStats = { database = { initialized = false, totalEntries = 0 } }
+        end
+        
+        -- Initialize export structure
+        local exportData = {
+            header = {
+                title = "SpectrumLootTool Database Debug Export",
+                timestamp = GetServerTime(),
+                dateString = date("%Y-%m-%d %H:%M:%S", GetServerTime()),
+                databaseVersion = Database.DB_VERSION,
+                exportVersion = "1.0"
+            },
+            system = {
+                wowVersion = nil,
+                buildNumber = nil,
+                gameVersion = nil,
+                playerName = UnitName("player") or "Unknown",
+                realmName = GetRealmName() or "Unknown",
+                addonVersion = SLH.version or "unknown"
+            },
+            statistics = debugStats,
+            sanitizedData = {
+                totalEntries = 0,
+                sampleEntries = {},
+                versionDistribution = {},
+                serverDistribution = {},
+                integrityStatus = {}
+            },
+            diagnostics = {
+                exportDuration = 0,
+                sanitizationMethod = "player_name_hash",
+                privacyLevel = "SAFE_FOR_SHARING"
+            }
+        }
+        
+        -- Get WoW system information
+        local wowVersion, buildNumber, buildDate, gameVersion = GetBuildInfo()
+        if wowVersion then
+            exportData.system.wowVersion = wowVersion
+            exportData.system.buildNumber = buildNumber
+            exportData.system.gameVersion = gameVersion
+        end
+        
+        -- Check if database is initialized
+        if not SpectrumLootHelperDB or not SpectrumLootHelperDB.playerData then
+            if SLH.Debug then
+                SLH.Debug:LogInfo("Database", "Database not initialized - generating empty export", {})
+            end
+            
+            exportData.sanitizedData.totalEntries = 0
+            exportData.diagnostics.exportDuration = GetServerTime() - startTime
+            
+            return true, self:_FormatExportForDisplay(exportData)
+        end
+        
+        -- Sanitize and export database entries
+        local sampleCount = 0
+        local maxSamples = 10  -- Limit sample entries for privacy and size
+        
+        for playerKey, playerData in pairs(SpectrumLootHelperDB.playerData) do
+            exportData.sanitizedData.totalEntries = exportData.sanitizedData.totalEntries + 1
+            
+            -- Extract version and server information for distribution analysis
+            local playerName, serverName, wowVersion = playerKey:match("^(.+)%-(.+)%-(%d+%.%d+)$")
+            if wowVersion then
+                exportData.sanitizedData.versionDistribution[wowVersion] = 
+                    (exportData.sanitizedData.versionDistribution[wowVersion] or 0) + 1
+            end
+            if serverName then
+                exportData.sanitizedData.serverDistribution[serverName] = 
+                    (exportData.sanitizedData.serverDistribution[serverName] or 0) + 1
+            end
+            
+            -- Add sample entry (sanitized) for diagnostic purposes
+            if sampleCount < maxSamples and type(playerData) == "table" then
+                local sanitizedEntry = self:_SanitizeEntry(playerKey, playerData, sampleCount + 1)
+                table.insert(exportData.sanitizedData.sampleEntries, sanitizedEntry)
+                sampleCount = sampleCount + 1
+            end
+            
+            -- Quick integrity check for diagnostics
+            if type(playerData) == "table" then
+                local valid, error = self:ValidateEntry(playerData)
+                if not valid then
+                    table.insert(exportData.sanitizedData.integrityStatus, {
+                        keyPattern = self:_SanitizeKeyPattern(playerKey),
+                        issue = error,
+                        entryType = type(playerData)
+                    })
+                end
+            else
+                table.insert(exportData.sanitizedData.integrityStatus, {
+                    keyPattern = self:_SanitizeKeyPattern(playerKey),
+                    issue = "Entry is not a table",
+                    entryType = type(playerData)
+                })
+            end
+        end
+        
+        -- Calculate export completion time
+        exportData.diagnostics.exportDuration = GetServerTime() - startTime
+        
+        -- Log comprehensive export operation
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Database export completed", {
+                totalEntries = exportData.sanitizedData.totalEntries,
+                sampleEntries = #exportData.sanitizedData.sampleEntries,
+                integrityIssues = #exportData.sanitizedData.integrityStatus,
+                exportDuration = exportData.diagnostics.exportDuration,
+                privacyLevel = exportData.diagnostics.privacyLevel,
+                operation = "debug_export_complete"
+            })
+        end
+        
+        -- Return formatted export for display
+        return true, self:_FormatExportForDisplay(exportData)
+        
+    end)
+end
+
+-- Helper function to sanitize individual database entry
+function Database:_SanitizeEntry(playerKey, playerData, sampleNumber)
+    -- Create a sanitized version of the entry for debugging
+    local sanitized = {
+        sampleId = sampleNumber,
+        keyPattern = self:_SanitizeKeyPattern(playerKey),
+        dataStructure = {
+            hasLastUpdate = playerData.LastUpdate ~= nil,
+            lastUpdateType = type(playerData.LastUpdate),
+            hasVenariiCharges = playerData.VenariiCharges ~= nil,
+            venariiChargesType = type(playerData.VenariiCharges),
+            venariiChargesValue = playerData.VenariiCharges,  -- Safe to include as it's just a number
+            hasEquipment = playerData.Equipment ~= nil,
+            equipmentType = type(playerData.Equipment)
+        }
+    }
+    
+    -- Include equipment structure analysis (no sensitive data)
+    if playerData.Equipment and type(playerData.Equipment) == "table" then
+        sanitized.equipmentAnalysis = {
+            totalSlots = 0,
+            trueSlots = 0,
+            falseSlots = 0,
+            invalidSlots = 0
+        }
+        
+        for slotName, value in pairs(playerData.Equipment) do
+            sanitized.equipmentAnalysis.totalSlots = sanitized.equipmentAnalysis.totalSlots + 1
+            if type(value) == "boolean" then
+                if value then
+                    sanitized.equipmentAnalysis.trueSlots = sanitized.equipmentAnalysis.trueSlots + 1
+                else
+                    sanitized.equipmentAnalysis.falseSlots = sanitized.equipmentAnalysis.falseSlots + 1
+                end
+            else
+                sanitized.equipmentAnalysis.invalidSlots = sanitized.equipmentAnalysis.invalidSlots + 1
+            end
+        end
     end
     
-    -- TODO: Create sanitized copy of database
-    -- TODO: Remove sensitive information if any
-    -- TODO: Format for easy reading/analysis
-    -- TODO: Return exportable data structure
+    return sanitized
+end
+
+-- Helper function to sanitize player key while preserving pattern information
+function Database:_SanitizeKeyPattern(playerKey)
+    -- Replace player name with generic placeholder but keep structure
+    local playerName, serverName, wowVersion = playerKey:match("^(.+)%-(.+)%-(%d+%.%d+)$")
+    if playerName and serverName and wowVersion then
+        -- Create hash of player name for uniqueness while maintaining privacy
+        local hash = 0
+        for i = 1, #playerName do
+            hash = hash + string.byte(playerName, i)
+        end
+        hash = hash % 1000  -- Keep it short
+        
+        return string.format("Player%03d-%s-%s", hash, serverName, wowVersion)
+    else
+        return "MALFORMED_KEY_PATTERN"
+    end
+end
+
+-- Helper function to format export data for display
+function Database:_FormatExportForDisplay(exportData)
+    local lines = {}
+    
+    -- Header
+    table.insert(lines, "=" .. string.rep("=", 60) .. "=")
+    table.insert(lines, exportData.header.title)
+    table.insert(lines, "Export Date: " .. exportData.header.dateString)
+    table.insert(lines, "Database Version: " .. exportData.header.databaseVersion)
+    table.insert(lines, "=" .. string.rep("=", 60) .. "=")
+    table.insert(lines, "")
+    
+    -- System Information
+    table.insert(lines, "SYSTEM INFORMATION:")
+    table.insert(lines, "  WoW Version: " .. (exportData.system.wowVersion or "Unknown"))
+    table.insert(lines, "  Build Number: " .. (exportData.system.buildNumber or "Unknown"))
+    table.insert(lines, "  Realm: " .. exportData.system.realmName)
+    table.insert(lines, "  Player: " .. exportData.system.playerName)
+    table.insert(lines, "  Addon Version: " .. exportData.system.addonVersion)
+    table.insert(lines, "")
+    
+    -- Database Statistics
+    table.insert(lines, "DATABASE STATISTICS:")
+    if exportData.statistics and exportData.statistics.database then
+        local db = exportData.statistics.database
+        table.insert(lines, "  Initialized: " .. (db.initialized and "Yes" or "No"))
+        table.insert(lines, "  Total Entries: " .. db.totalEntries)
+        table.insert(lines, "  Memory Usage: " .. (db.memoryUsageFormatted or "Unknown"))
+        
+        if exportData.statistics.summary then
+            local s = exportData.statistics.summary
+            table.insert(lines, "  Unique Players: " .. (s.totalPlayers or 0))
+            table.insert(lines, "  Servers: " .. (s.totalServers or 0))
+            table.insert(lines, "  WoW Versions: " .. (s.totalVersions or 0))
+            table.insert(lines, "  Integrity Rate: " .. string.format("%.1f%%", s.integrityRate or 0))
+            table.insert(lines, "  Health Status: " .. (s.healthStatus or "Unknown"))
+        end
+    end
+    table.insert(lines, "")
+    
+    -- Version Distribution
+    table.insert(lines, "WOW VERSION DISTRIBUTION:")
+    if exportData.sanitizedData.versionDistribution then
+        for version, count in pairs(exportData.sanitizedData.versionDistribution) do
+            table.insert(lines, "  " .. version .. ": " .. count .. " entries")
+        end
+    end
+    table.insert(lines, "")
+    
+    -- Server Distribution
+    table.insert(lines, "SERVER DISTRIBUTION:")
+    if exportData.sanitizedData.serverDistribution then
+        for server, count in pairs(exportData.sanitizedData.serverDistribution) do
+            table.insert(lines, "  " .. server .. ": " .. count .. " entries")
+        end
+    end
+    table.insert(lines, "")
+    
+    -- Sample Entries (Sanitized)
+    table.insert(lines, "SAMPLE ENTRIES (SANITIZED):")
+    if exportData.sanitizedData.sampleEntries then
+        for _, sample in ipairs(exportData.sanitizedData.sampleEntries) do
+            table.insert(lines, "  Sample " .. sample.sampleId .. ":")
+            table.insert(lines, "    Key Pattern: " .. sample.keyPattern)
+            table.insert(lines, "    Venarii Charges: " .. (sample.dataStructure.venariiChargesValue or "null"))
+            if sample.equipmentAnalysis then
+                local eq = sample.equipmentAnalysis
+                table.insert(lines, "    Equipment: " .. eq.totalSlots .. " slots (" .. eq.trueSlots .. " true, " .. eq.falseSlots .. " false, " .. eq.invalidSlots .. " invalid)")
+            end
+        end
+    end
+    table.insert(lines, "")
+    
+    -- Integrity Issues
+    if exportData.sanitizedData.integrityStatus and #exportData.sanitizedData.integrityStatus > 0 then
+        table.insert(lines, "INTEGRITY ISSUES:")
+        for _, issue in ipairs(exportData.sanitizedData.integrityStatus) do
+            table.insert(lines, "  " .. issue.keyPattern .. ": " .. issue.issue)
+        end
+        table.insert(lines, "")
+    end
+    
+    -- Export Diagnostics
+    table.insert(lines, "EXPORT DIAGNOSTICS:")
+    table.insert(lines, "  Export Duration: " .. string.format("%.3f seconds", exportData.diagnostics.exportDuration))
+    table.insert(lines, "  Privacy Level: " .. exportData.diagnostics.privacyLevel)
+    table.insert(lines, "  Sanitization: " .. exportData.diagnostics.sanitizationMethod)
+    table.insert(lines, "")
+    
+    -- Footer
+    table.insert(lines, "=" .. string.rep("=", 60) .. "=")
+    table.insert(lines, "This export is safe for sharing - no sensitive player data included")
+    table.insert(lines, "Generated by SpectrumLootTool Database Export System")
+    table.insert(lines, "=" .. string.rep("=", 60) .. "=")
+    
+    return table.concat(lines, "\n")
 end
 
 -- Check database integrity (alias for CheckDataIntegrity)

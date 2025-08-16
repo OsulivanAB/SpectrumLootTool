@@ -1869,17 +1869,255 @@ function Database:ExportForDebug()
     -- TODO: Return exportable data structure
 end
 
--- TODO: Validate database integrity
+-- Check database integrity (alias for CheckDataIntegrity)
 function Database:ValidateIntegrity()
-    if SLH.Debug then
-        SLH.Debug:LogDebug("Database", "ValidateIntegrity() called", {})
-    end
-    
-    -- TODO: Check all entries against schema
-    -- TODO: Verify no corrupted or invalid data
-    -- TODO: Check for orphaned or duplicate entries
-    -- TODO: Report any integrity issues found
-    -- TODO: Return integrity status and issue list
+    return self:CheckDataIntegrity()
+end
+
+-- Check database data integrity
+-- Checks all entries against schema, verifies no corrupted data, checks for duplicates
+-- Returns comprehensive integrity status and detailed issue list
+function Database:CheckDataIntegrity()
+    return self:SafeExecute("CheckDataIntegrity", function()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "CheckDataIntegrity() starting comprehensive integrity check", {
+                operation = "integrity_check"
+            })
+        end
+        
+        -- Initialize integrity check results
+        local integrityResults = {
+            startTime = GetServerTime(),
+            totalEntries = 0,
+            validEntries = 0,
+            corruptedEntries = 0,
+            duplicateEntries = 0,
+            orphanedEntries = 0,
+            schemaViolations = 0,
+            issues = {},
+            summary = {},
+            passed = false
+        }
+        
+        -- Check if database is initialized
+        if not SpectrumLootHelperDB or not SpectrumLootHelperDB.playerData then
+            if SLH.Debug then
+                SLH.Debug:LogWarn("Database", "Database not initialized - cannot check integrity", {})
+            end
+            return true, "Database not initialized - nothing to check", integrityResults
+        end
+        
+        -- Count total entries and perform initial checks
+        for playerKey, playerData in pairs(SpectrumLootHelperDB.playerData) do
+            integrityResults.totalEntries = integrityResults.totalEntries + 1
+            
+            if SLH.Debug then
+                SLH.Debug:LogDebug("Database", "Checking entry integrity", {
+                    playerKey = playerKey,
+                    entryNumber = integrityResults.totalEntries
+                })
+            end
+            
+            -- Check entry structure (must be table)
+            if type(playerData) ~= "table" then
+                integrityResults.corruptedEntries = integrityResults.corruptedEntries + 1
+                table.insert(integrityResults.issues, {
+                    type = "corruption",
+                    severity = "HIGH",
+                    playerKey = playerKey,
+                    issue = "Entry data is not a table",
+                    details = {
+                        actualType = type(playerData),
+                        expectedType = "table"
+                    }
+                })
+                if SLH.Debug then
+                    SLH.Debug:LogError("Database", "Corrupted entry detected - not a table", {
+                        playerKey = playerKey,
+                        actualType = type(playerData)
+                    })
+                end
+                goto continue -- Skip further validation for this corrupted entry
+            end
+            
+            -- Validate entry against schema using existing ValidateEntry function
+            local entryValid, entryError = self:ValidateEntry(playerData)
+            if not entryValid then
+                integrityResults.schemaViolations = integrityResults.schemaViolations + 1
+                table.insert(integrityResults.issues, {
+                    type = "schema_violation",
+                    severity = "MEDIUM",
+                    playerKey = playerKey,
+                    issue = "Entry violates schema requirements",
+                    details = {
+                        validationError = entryError
+                    }
+                })
+                if SLH.Debug then
+                    SLH.Debug:LogWarn("Database", "Schema violation detected", {
+                        playerKey = playerKey,
+                        validationError = entryError
+                    })
+                end
+            else
+                integrityResults.validEntries = integrityResults.validEntries + 1
+            end
+            
+            -- Check for key format consistency
+            local playerName, serverName, wowVersion = playerKey:match("^(.+)%-(.+)%-(%d+%.%d+)$")
+            if not playerName or not serverName or not wowVersion then
+                integrityResults.orphanedEntries = integrityResults.orphanedEntries + 1
+                table.insert(integrityResults.issues, {
+                    type = "orphaned_entry",
+                    severity = "MEDIUM",
+                    playerKey = playerKey,
+                    issue = "Player key does not match expected format",
+                    details = {
+                        expectedPattern = "PlayerName-ServerName-Version",
+                        actualKey = playerKey
+                    }
+                })
+                if SLH.Debug then
+                    SLH.Debug:LogWarn("Database", "Orphaned entry with invalid key format", {
+                        playerKey = playerKey,
+                        expectedPattern = "PlayerName-ServerName-Version"
+                    })
+                end
+            else
+                -- Verify extracted info matches entry data (if available)
+                if playerData.PlayerName and playerData.PlayerName ~= playerName then
+                    table.insert(integrityResults.issues, {
+                        type = "data_mismatch",
+                        severity = "MEDIUM",
+                        playerKey = playerKey,
+                        issue = "PlayerName in key doesn't match entry data",
+                        details = {
+                            keyPlayerName = playerName,
+                            entryPlayerName = playerData.PlayerName
+                        }
+                    })
+                end
+                
+                if playerData.ServerName and playerData.ServerName ~= serverName then
+                    table.insert(integrityResults.issues, {
+                        type = "data_mismatch",
+                        severity = "MEDIUM",
+                        playerKey = playerKey,
+                        issue = "ServerName in key doesn't match entry data",
+                        details = {
+                            keyServerName = serverName,
+                            entryServerName = playerData.ServerName
+                        }
+                    })
+                end
+                
+                if playerData.WoWVersion and playerData.WoWVersion ~= wowVersion then
+                    table.insert(integrityResults.issues, {
+                        type = "data_mismatch",
+                        severity = "MEDIUM",
+                        playerKey = playerKey,
+                        issue = "WoWVersion in key doesn't match entry data",
+                        details = {
+                            keyWoWVersion = wowVersion,
+                            entryWoWVersion = playerData.WoWVersion
+                        }
+                    })
+                end
+            end
+            
+            ::continue:: -- Label for corrupted entry skip
+        end
+        
+        -- Check for duplicate entries (same player, different keys)
+        local playerTracker = {}
+        for playerKey, playerData in pairs(SpectrumLootHelperDB.playerData) do
+            if type(playerData) == "table" then
+                local playerName, serverName, wowVersion = playerKey:match("^(.+)%-(.+)%-(%d+%.%d+)$")
+                if playerName and serverName then
+                    local playerIdentifier = playerName .. "-" .. serverName
+                    if not playerTracker[playerIdentifier] then
+                        playerTracker[playerIdentifier] = {}
+                    end
+                    table.insert(playerTracker[playerIdentifier], {
+                        key = playerKey,
+                        version = wowVersion
+                    })
+                end
+            end
+        end
+        
+        -- Report duplicate analysis (not necessarily errors, but good to track)
+        for playerIdentifier, entries in pairs(playerTracker) do
+            if #entries > 1 then
+                -- Multiple versions for same player (this is expected behavior)
+                if SLH.Debug then
+                    SLH.Debug:LogInfo("Database", "Multiple versions found for player", {
+                        player = playerIdentifier,
+                        versions = #entries,
+                        keys = entries
+                    })
+                end
+            end
+        end
+        
+        -- Generate comprehensive summary
+        integrityResults.endTime = GetServerTime()
+        integrityResults.duration = integrityResults.endTime - integrityResults.startTime
+        
+        -- Calculate success metrics
+        local successRate = 0
+        if integrityResults.totalEntries > 0 then
+            successRate = (integrityResults.validEntries / integrityResults.totalEntries) * 100
+        end
+        
+        integrityResults.passed = (integrityResults.corruptedEntries == 0 and 
+                                  integrityResults.schemaViolations == 0 and 
+                                  integrityResults.orphanedEntries == 0)
+        
+        -- Generate summary information
+        table.insert(integrityResults.summary, string.format("Total entries checked: %d", integrityResults.totalEntries))
+        table.insert(integrityResults.summary, string.format("Valid entries: %d (%.1f%%)", integrityResults.validEntries, successRate))
+        table.insert(integrityResults.summary, string.format("Corrupted entries: %d", integrityResults.corruptedEntries))
+        table.insert(integrityResults.summary, string.format("Schema violations: %d", integrityResults.schemaViolations))
+        table.insert(integrityResults.summary, string.format("Orphaned entries: %d", integrityResults.orphanedEntries))
+        table.insert(integrityResults.summary, string.format("Total issues found: %d", #integrityResults.issues))
+        
+        -- Log comprehensive integrity check results
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Integrity check completed", {
+                totalEntries = integrityResults.totalEntries,
+                validEntries = integrityResults.validEntries,
+                corruptedEntries = integrityResults.corruptedEntries,
+                schemaViolations = integrityResults.schemaViolations,
+                orphanedEntries = integrityResults.orphanedEntries,
+                totalIssues = #integrityResults.issues,
+                successRate = successRate,
+                passed = integrityResults.passed,
+                duration = integrityResults.duration,
+                operation = "integrity_check_complete"
+            })
+        end
+        
+        -- Return results with appropriate success message
+        local message
+        if integrityResults.passed then
+            message = string.format(
+                "Database integrity check PASSED: %d entries verified, no critical issues found",
+                integrityResults.totalEntries
+            )
+        else
+            message = string.format(
+                "Database integrity check found issues: %d corrupted, %d schema violations, %d orphaned entries",
+                integrityResults.corruptedEntries,
+                integrityResults.schemaViolations,
+                integrityResults.orphanedEntries
+            )
+        end
+        
+        return true, message, integrityResults
+        
+    end)
 end
 
 -- ============================================================================

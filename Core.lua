@@ -237,6 +237,13 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
         print("|cff00ff00Guild: " .. (guild or "None") .. "|r")
         print("|cff00ff00Officer: " .. tostring(isOfficer) .. "|r")
         print("|cff00ff00Version: " .. SLH.version .. "|r")
+        
+        -- Show WoW version from Log system
+        if SLH.Log then
+            local wowVersion = SLH.Log:GetCurrentWoWVersion()
+            print("|cff00ff00WoW Version: " .. wowVersion .. "|r")
+        end
+        
         if SLH.db and SLH.db.log then
             local totalEntries = #SLH.db.log
             print("|cff00ff00Log Entries: " .. totalEntries .. "|r")

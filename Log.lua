@@ -8,18 +8,71 @@ SLH.Log = {
 
 -- Initialize the log system
 function SLH.Log:Init()
-    -- Placeholder for log system initialization
+    -- Initialize WoW version detection and caching
+    self:GetCurrentWoWVersion()
+    
+    -- Placeholder for additional log system initialization
     -- Will handle:
-    -- - WoW version detection and tracking
     -- - Log database structure validation
     -- - Legacy log migration if needed
 end
 
 -- Get current WoW version for log filtering (major.minor format)
 function SLH.Log:GetCurrentWoWVersion()
-    -- Placeholder for WoW version detection
-    -- Will return format like "10.2" for version filtering
-    return self.currentWoWVersion
+    -- Use cached version if already detected
+    if self.currentWoWVersion then
+        return self.currentWoWVersion
+    end
+    
+    -- Detect and cache WoW version using WoW API
+    local success, result = pcall(function()
+        local version, build, date, tocversion = GetBuildInfo()
+        
+        -- Extract major.minor version from full version string
+        -- Example: "10.2.5.52902" -> "10.2"
+        local major, minor = string.match(version, "(%d+)%.(%d+)")
+        if major and minor then
+            return major .. "." .. minor
+        else
+            -- Fallback: if pattern matching fails, try to extract first two numbers
+            local parts = {}
+            for part in string.gmatch(version, "(%d+)") do
+                table.insert(parts, part)
+                if #parts == 2 then break end
+            end
+            
+            if #parts >= 2 then
+                return parts[1] .. "." .. parts[2]
+            else
+                -- Last resort: return full version if we can't parse it
+                return version
+            end
+        end
+    end)
+    
+    if success and result then
+        -- Cache the detected version
+        self.currentWoWVersion = result
+        return result
+    else
+        -- Error handling: return fallback version
+        local fallbackVersion = "unknown"
+        self.currentWoWVersion = fallbackVersion
+        
+        -- Optional debug output (can be removed in production)
+        if SLH and SLH.debugLog then
+            print("|cffff0000SLH Log: Failed to detect WoW version, using fallback: " .. fallbackVersion .. "|r")
+        end
+        
+        return fallbackVersion
+    end
+end
+
+-- Force refresh WoW version detection (useful for debugging or version changes)
+function SLH.Log:RefreshWoWVersion()
+    -- Clear cached version to force re-detection
+    self.currentWoWVersion = nil
+    return self:GetCurrentWoWVersion()
 end
 
 -- Add a new log entry for roll count changes
@@ -78,15 +131,20 @@ end
 
 -- Get log statistics for debugging/status
 function SLH.Log:GetStats()
+    -- Get current WoW version for stats
+    local currentVersion = self:GetCurrentWoWVersion()
+    
     -- Placeholder for log statistics
     -- Will return:
     -- - Total entries
     -- - Entries for current WoW version
+    -- - Current WoW version
     -- - Oldest/newest entry timestamps
     -- - Memory usage estimate
     return {
         totalEntries = 0,
         currentVersionEntries = 0,
+        currentWoWVersion = currentVersion,
         oldestEntry = nil,
         newestEntry = nil
     }

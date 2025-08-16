@@ -18,6 +18,13 @@ function SLH:Init()
         self.Log:Init()
     end
     
+    -- Initialize debug system
+    if self.Debug then
+        self.Debug:Init()
+        self.Debug:StartSession()
+        self.Debug:LogInfo("Core", "Addon initialized", { version = self.version })
+    end
+    
     -- Recalculate values from log in case of inconsistencies
     self:RecalculateFromLog()
     if self.CreateOptions then
@@ -136,9 +143,29 @@ end
 
 -- Adjust a player's roll count and record the change
 function SLH:AdjustRoll(playerName, delta, officer)
+    -- Debug logging for roll adjustment
+    if self.Debug then
+        self.Debug:LogDebug("Core", "AdjustRoll called", { 
+            player = playerName, 
+            delta = delta, 
+            officer = officer 
+        })
+    end
+    
     local oldValue = self.db.rolls[playerName] or 0
     local newValue = math.max(0, oldValue + delta)
     self.db.rolls[playerName] = newValue
+    
+    -- Debug logging for the actual change
+    if self.Debug then
+        self.Debug:LogInfo("Core", "Player roll count adjusted", {
+            player = playerName,
+            officer = officer,
+            oldValue = oldValue,
+            newValue = newValue,
+            delta = delta
+        })
+    end
     
     -- Get current WoW version for tracking
     local wowVersion = "unknown"
@@ -250,6 +277,16 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
             local totalEntries = #SLH.db.log
             print("|cff00ff00Log Entries: " .. totalEntries .. "|r")
         end
+        
+        -- Show debug system status
+        if SLH.Debug then
+            local debugStats = SLH.Debug:GetStats()
+            print("|cff00ff00Debug Logging: " .. (debugStats.enabled and "Enabled" or "Disabled") .. "|r")
+            if debugStats.enabled and debugStats.totalLogEntries > 0 then
+                print("|cff00ff00Debug Entries: " .. debugStats.totalLogEntries .. "|r")
+            end
+        end
+        
         return
     end
     
@@ -272,12 +309,57 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
         return
     end
     
+    -- Handle debug logging commands
+    if args[1] == "debuglog" or args[1] == "debuglogging" then
+        if not SLH.Debug then
+            print("|cffff0000SLH Debug module not loaded|r")
+            return
+        end
+        
+        if args[2] == "on" or args[2] == "enable" then
+            SLH.Debug:SetEnabled(true)
+            print("|cff00ff00SLH Debug logging enabled|r")
+        elseif args[2] == "off" or args[2] == "disable" then
+            SLH.Debug:SetEnabled(false)
+            print("|cff00ff00SLH Debug logging disabled|r")
+        elseif args[2] == "toggle" then
+            SLH.Debug:Toggle()
+        elseif args[2] == "show" or args[2] == "view" then
+            local count = tonumber(args[3]) or 10
+            SLH.Debug:DisplayLogsInChat(nil, nil, count)
+        elseif args[2] == "clear" then
+            SLH.Debug:ClearLogs()
+            print("|cff00ff00SLH Debug logs cleared|r")
+        elseif args[2] == "export" then
+            local export = SLH.Debug:ExportForBugReport()
+            print("|cff00ff00SLH Debug log exported (copy from debug file)|r")
+        elseif args[2] == "stats" then
+            local stats = SLH.Debug:GetStats()
+            print("|cff00ff00=== SLH Debug Stats ===|r")
+            print("|cff00ff00Enabled: " .. (stats.enabled and "Yes" or "No") .. "|r")
+            print("|cff00ff00Session Entries: " .. stats.totalLogEntries .. "|r")
+            if stats.sessionDuration > 0 then
+                print("|cff00ff00Session Duration: " .. stats.sessionDuration .. "s|r")
+            end
+        else
+            print("|cff00ff00=== SLH Debug Commands ===|r")
+            print("|cff00ff00/slh debuglog on/off - Enable/disable debug logging|r")
+            print("|cff00ff00/slh debuglog toggle - Toggle debug logging|r")
+            print("|cff00ff00/slh debuglog show [count] - Show recent debug logs|r")
+            print("|cff00ff00/slh debuglog clear - Clear debug logs|r")
+            print("|cff00ff00/slh debuglog export - Export logs for bug report|r")
+            print("|cff00ff00/slh debuglog stats - Show debug statistics|r")
+        end
+        return
+    end
+    
     -- Handle help command
     if args[1] == "help" then
         print("|cff00ff00=== SLH Commands ===|r")
         print("|cff00ff00/slh - Toggle main window|r")
         print("|cff00ff00/slh status - Show addon status|r")
         print("|cff00ff00/slh debug - Toggle officer debug|r")
+        print("|cff00ff00/slh debuglog - Debug logging commands|r")
         print("|cff00ff00/slh refresh - Refresh officer status|r")
         print("|cff00ff00/slh refreshversion - Refresh WoW version detection|r")
         return

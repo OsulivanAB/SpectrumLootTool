@@ -8,4 +8,5 @@
 
 Core.lua
 Log.lua
+Debug.lua
 UI.lua

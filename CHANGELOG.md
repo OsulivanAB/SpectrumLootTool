@@ -8,6 +8,9 @@
 - **Local Operation**: Addon now operates locally only - roll count changes are not shared between players
 - **Preparation**: Clean foundation for rebuilding sync functionality with improved architecture
 - **New Log Module**: Added Log.lua placeholder file for future log management system
+- **New Debug System**: Added Debug.lua module for session-based debugging and bug reports
+- **Debug Features**: File-based debug logging, in-game log viewing, slash commands for debug control
+- **Debug Commands**: Added /slh debuglog commands for debug logging management
 - **Architecture**: Structured log system with WoW version tracking, entry validation, and future sync compatibility
 - **Note**: This version will not sync data between players - use only for testing or single-player scenarios
 

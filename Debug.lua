@@ -4239,6 +4239,817 @@ function SLH.Debug:RunWoWCompatibilityVerification()
     return compatibilityResults
 end
 
+-- ========================================
+-- TASK 21: PERFORMANCE IMPACT ASSESSMENT
+-- ========================================
+
+-- Comprehensive performance impact assessment for WoW addon optimization
+function SLH.Debug:RunPerformanceImpactAssessment()
+    local assessmentResults = {
+        testName = "Debug System Performance Impact Assessment",
+        startTime = GetServerTime(),
+        categories = {},
+        optimizations = {},
+        recommendations = {},
+        performanceScore = 0,
+        impactLevel = "UNKNOWN"
+    }
+    
+    print("|cff00ff00=== SLH Debug: Starting Performance Impact Assessment ===|r")
+    
+    -- Category 1: Memory Footprint Analysis
+    local function analyzeMemoryFootprint()
+        local memoryResults = {
+            description = "Memory usage and footprint analysis",
+            tests = {},
+            totalMemoryUsage = 0,
+            efficiencyRating = "UNKNOWN",
+            recommendations = {}
+        }
+        
+        -- Test 1: Baseline Memory Usage
+        local function measureBaselineMemory()
+            local stats = self:GetStats()
+            local baselineMemory = stats.memoryUsage or 0
+            
+            return {
+                baselineBytes = baselineMemory,
+                baselineKB = baselineMemory / 1024,
+                acceptable = baselineMemory < (50 * 1024), -- 50KB baseline limit
+                description = "Baseline memory usage without active logging"
+            }
+        end
+        
+        -- Test 2: Memory Growth Under Load
+        local function measureMemoryGrowth()
+            local originalState = self.enabled
+            local originalBuffer = #self.logBuffer
+            
+            self:SetEnabled(true)
+            
+            -- Generate test load
+            local startMemory = self:GetStats().memoryUsage
+            for i = 1, 100 do
+                self:LogInfo("PerformanceTest", "Memory test message " .. i, {
+                    iteration = i,
+                    data = string.rep("x", 50) -- 50-char string per log
+                })
+            end
+            local endMemory = self:GetStats().memoryUsage
+            
+            local memoryGrowth = endMemory - startMemory
+            local growthPerEntry = memoryGrowth / 100
+            
+            -- Clean up test data
+            while #self.logBuffer > originalBuffer do
+                table.remove(self.logBuffer)
+            end
+            self:SetEnabled(originalState)
+            
+            return {
+                memoryGrowth = memoryGrowth,
+                growthPerEntry = growthPerEntry,
+                acceptable = growthPerEntry < 512, -- 512 bytes per entry limit
+                description = "Memory growth under logging load"
+            }
+        end
+        
+        -- Test 3: Memory Efficiency with Large Data
+        local function measureLargeDataEfficiency()
+            local originalState = self.enabled
+            self:SetEnabled(true)
+            
+            local startMemory = self:GetStats().memoryUsage
+            
+            -- Test with large data objects
+            local largeData = {}
+            for i = 1, 50 do
+                largeData["key" .. i] = string.rep("data", 20)
+            end
+            
+            self:LogInfo("PerformanceTest", "Large data test", largeData)
+            
+            local endMemory = self:GetStats().memoryUsage
+            local dataImpact = endMemory - startMemory
+            
+            -- Clean up
+            if #self.logBuffer > 0 then
+                table.remove(self.logBuffer)
+            end
+            self:SetEnabled(originalState)
+            
+            return {
+                dataImpact = dataImpact,
+                efficient = dataImpact < (2 * 1024), -- 2KB limit for large objects
+                description = "Memory efficiency with large data objects"
+            }
+        end
+        
+        -- Test 4: Buffer Management Efficiency
+        local function measureBufferEfficiency()
+            local originalState = self.enabled
+            local originalMax = self.maxLogEntries
+            
+            self.maxLogEntries = 10 -- Small buffer for testing
+            self:SetEnabled(true)
+            
+            local startMemory = self:GetStats().memoryUsage
+            
+            -- Fill buffer beyond capacity to test pruning
+            for i = 1, 20 do
+                self:LogInfo("PerformanceTest", "Buffer test " .. i)
+            end
+            
+            local endMemory = self:GetStats().memoryUsage
+            local bufferSize = #self.logBuffer
+            
+            -- Restore settings
+            self.maxLogEntries = originalMax
+            self:SetEnabled(originalState)
+            
+            return {
+                finalBufferSize = bufferSize,
+                memoryUsage = endMemory - startMemory,
+                pruningWorking = bufferSize <= 10,
+                description = "Buffer management and pruning efficiency"
+            }
+        end
+        
+        local tests = {
+            baseline = measureBaselineMemory(),
+            growth = measureMemoryGrowth(),
+            largeData = measureLargeDataEfficiency(),
+            buffer = measureBufferEfficiency()
+        }
+        
+        memoryResults.tests = tests
+        memoryResults.totalMemoryUsage = tests.baseline.baselineBytes + tests.growth.memoryGrowth
+        
+        -- Calculate efficiency rating
+        local efficiencyScore = 0
+        local maxScore = 4
+        
+        if tests.baseline.acceptable then efficiencyScore = efficiencyScore + 1 end
+        if tests.growth.acceptable then efficiencyScore = efficiencyScore + 1 end
+        if tests.largeData.efficient then efficiencyScore = efficiencyScore + 1 end
+        if tests.buffer.pruningWorking then efficiencyScore = efficiencyScore + 1 end
+        
+        local efficiencyRatio = efficiencyScore / maxScore
+        if efficiencyRatio >= 0.9 then
+            memoryResults.efficiencyRating = "EXCELLENT"
+        elseif efficiencyRatio >= 0.75 then
+            memoryResults.efficiencyRating = "GOOD"
+        elseif efficiencyRatio >= 0.5 then
+            memoryResults.efficiencyRating = "FAIR"
+        else
+            memoryResults.efficiencyRating = "POOR"
+        end
+        
+        -- Generate recommendations
+        if not tests.baseline.acceptable then
+            table.insert(memoryResults.recommendations, "Reduce baseline memory usage")
+        end
+        if not tests.growth.acceptable then
+            table.insert(memoryResults.recommendations, "Optimize per-entry memory footprint")
+        end
+        if not tests.largeData.efficient then
+            table.insert(memoryResults.recommendations, "Improve large data serialization")
+        end
+        if not tests.buffer.pruningWorking then
+            table.insert(memoryResults.recommendations, "Fix buffer pruning mechanism")
+        end
+        
+        return memoryResults
+    end
+    
+    -- Category 2: CPU Usage Optimization
+    local function analyzeCPUUsage()
+        local cpuResults = {
+            description = "CPU usage and execution time analysis",
+            tests = {},
+            avgExecutionTime = 0,
+            performanceRating = "UNKNOWN",
+            recommendations = {}
+        }
+        
+        -- Test 1: Logging Function Performance
+        local function measureLoggingPerformance()
+            local originalState = self.enabled
+            self:SetEnabled(true)
+            
+            local iterations = 1000
+            local startTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            
+            for i = 1, iterations do
+                self:LogInfo("PerformanceTest", "CPU test " .. i, {iteration = i})
+            end
+            
+            local endTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            local totalTime = endTime - startTime
+            local avgTimePerLog = totalTime / iterations
+            
+            -- Clean up test logs
+            while #self.logBuffer > 0 and string.find(self.logBuffer[#self.logBuffer].message, "CPU test") do
+                table.remove(self.logBuffer)
+            end
+            
+            self:SetEnabled(originalState)
+            
+            return {
+                totalTime = totalTime,
+                avgTimePerLog = avgTimePerLog,
+                iterations = iterations,
+                efficient = avgTimePerLog < 0.1, -- 0.1ms per log entry
+                description = "Logging function execution time"
+            }
+        end
+        
+        -- Test 2: Disabled State Performance
+        local function measureDisabledStatePerformance()
+            self:SetEnabled(false)
+            
+            local iterations = 1000
+            local startTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            
+            for i = 1, iterations do
+                self:LogInfo("PerformanceTest", "Disabled test " .. i, {iteration = i})
+            end
+            
+            local endTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            local totalTime = endTime - startTime
+            local avgTimePerLog = totalTime / iterations
+            
+            return {
+                totalTime = totalTime,
+                avgTimePerLog = avgTimePerLog,
+                iterations = iterations,
+                optimal = avgTimePerLog < 0.01, -- 0.01ms when disabled (near-zero)
+                description = "Disabled state execution time (should be minimal)"
+            }
+        end
+        
+        -- Test 3: Statistics Calculation Performance
+        local function measureStatsPerformance()
+            local originalState = self.enabled
+            self:SetEnabled(true)
+            
+            -- Add some test data
+            for i = 1, 50 do
+                self:LogInfo("StatsTest", "Stats test " .. i)
+            end
+            
+            local iterations = 100
+            local startTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            
+            for i = 1, iterations do
+                local stats = self:GetStats()
+            end
+            
+            local endTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            local totalTime = endTime - startTime
+            local avgTimePerStats = totalTime / iterations
+            
+            -- Clean up
+            while #self.logBuffer > 0 and string.find(self.logBuffer[#self.logBuffer].message, "Stats test") do
+                table.remove(self.logBuffer)
+            end
+            
+            self:SetEnabled(originalState)
+            
+            return {
+                totalTime = totalTime,
+                avgTimePerStats = avgTimePerStats,
+                iterations = iterations,
+                acceptable = avgTimePerStats < 1.0, -- 1ms for stats calculation
+                description = "Statistics calculation performance"
+            }
+        end
+        
+        -- Test 4: Export Function Performance
+        local function measureExportPerformance()
+            local originalState = self.enabled
+            self:SetEnabled(true)
+            
+            -- Add test data for export
+            for i = 1, 20 do
+                self:LogInfo("ExportTest", "Export test " .. i)
+            end
+            
+            local startTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            local exportData = self:ExportForBugReport()
+            local endTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            
+            local exportTime = endTime - startTime
+            local exportSize = string.len(exportData)
+            
+            -- Clean up
+            while #self.logBuffer > 0 and string.find(self.logBuffer[#self.logBuffer].message, "Export test") do
+                table.remove(self.logBuffer)
+            end
+            
+            self:SetEnabled(originalState)
+            
+            return {
+                exportTime = exportTime,
+                exportSize = exportSize,
+                acceptable = exportTime < 10.0, -- 10ms for export
+                description = "Export function performance"
+            }
+        end
+        
+        local tests = {
+            logging = measureLoggingPerformance(),
+            disabled = measureDisabledStatePerformance(),
+            stats = measureStatsPerformance(),
+            export = measureExportPerformance()
+        }
+        
+        cpuResults.tests = tests
+        cpuResults.avgExecutionTime = (tests.logging.avgTimePerLog + tests.stats.avgTimePerStats) / 2
+        
+        -- Calculate performance rating
+        local performanceScore = 0
+        local maxScore = 4
+        
+        if tests.logging.efficient then performanceScore = performanceScore + 1 end
+        if tests.disabled.optimal then performanceScore = performanceScore + 1 end
+        if tests.stats.acceptable then performanceScore = performanceScore + 1 end
+        if tests.export.acceptable then performanceScore = performanceScore + 1 end
+        
+        local performanceRatio = performanceScore / maxScore
+        if performanceRatio >= 0.9 then
+            cpuResults.performanceRating = "EXCELLENT"
+        elseif performanceRatio >= 0.75 then
+            cpuResults.performanceRating = "GOOD"
+        elseif performanceRatio >= 0.5 then
+            cpuResults.performanceRating = "FAIR"
+        else
+            cpuResults.performanceRating = "POOR"
+        end
+        
+        -- Generate recommendations
+        if not tests.logging.efficient then
+            table.insert(cpuResults.recommendations, "Optimize logging function execution time")
+        end
+        if not tests.disabled.optimal then
+            table.insert(cpuResults.recommendations, "Improve disabled state early-return optimization")
+        end
+        if not tests.stats.acceptable then
+            table.insert(cpuResults.recommendations, "Optimize statistics calculation performance")
+        end
+        if not tests.export.acceptable then
+            table.insert(cpuResults.recommendations, "Optimize export function performance")
+        end
+        
+        return cpuResults
+    end
+    
+    -- Category 3: Disabled-State Efficiency
+    local function analyzeDisabledStateEfficiency()
+        local disabledResults = {
+            description = "Performance when debug logging is disabled",
+            tests = {},
+            efficiencyRating = "UNKNOWN",
+            recommendations = {}
+        }
+        
+        -- Test 1: Function Call Overhead When Disabled
+        local function measureDisabledOverhead()
+            self:SetEnabled(false)
+            
+            local functions = {
+                function() self:LogInfo("Test", "Message") end,
+                function() self:LogWarn("Test", "Message") end,
+                function() self:LogError("Test", "Message") end,
+                function() self:LogDebug("Test", "Message") end
+            }
+            
+            local totalTime = 0
+            local iterations = 250 -- 250 * 4 = 1000 total calls
+            
+            for _, func in ipairs(functions) do
+                local startTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+                
+                for i = 1, iterations do
+                    func()
+                end
+                
+                local endTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+                totalTime = totalTime + (endTime - startTime)
+            end
+            
+            local avgOverhead = totalTime / (iterations * #functions)
+            
+            return {
+                totalTime = totalTime,
+                avgOverhead = avgOverhead,
+                totalCalls = iterations * #functions,
+                minimal = avgOverhead < 0.005, -- 0.005ms overhead when disabled
+                description = "Function call overhead when debug is disabled"
+            }
+        end
+        
+        -- Test 2: Memory Impact When Disabled
+        local function measureDisabledMemoryImpact()
+            self:SetEnabled(false)
+            
+            local startMemory = self:GetStats().memoryUsage
+            
+            -- Attempt to log many entries while disabled
+            for i = 1, 100 do
+                self:LogInfo("DisabledTest", "Should not be logged " .. i, {
+                    data = string.rep("x", 100)
+                })
+            end
+            
+            local endMemory = self:GetStats().memoryUsage
+            local memoryIncrease = endMemory - startMemory
+            
+            return {
+                startMemory = startMemory,
+                endMemory = endMemory,
+                memoryIncrease = memoryIncrease,
+                noImpact = memoryIncrease < 100, -- Less than 100 bytes when disabled
+                description = "Memory impact when logging while disabled"
+            }
+        end
+        
+        -- Test 3: State Management Efficiency
+        local function measureStateManagementEfficiency()
+            local toggleIterations = 100
+            local startTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            
+            for i = 1, toggleIterations do
+                self:SetEnabled(true)
+                self:SetEnabled(false)
+            end
+            
+            local endTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            local totalTime = endTime - startTime
+            local avgToggleTime = totalTime / (toggleIterations * 2) -- *2 for enable + disable
+            
+            return {
+                totalTime = totalTime,
+                avgToggleTime = avgToggleTime,
+                toggleIterations = toggleIterations,
+                efficient = avgToggleTime < 0.01, -- 0.01ms per state change
+                description = "State management (enable/disable) efficiency"
+            }
+        end
+        
+        local tests = {
+            overhead = measureDisabledOverhead(),
+            memory = measureDisabledMemoryImpact(),
+            stateManagement = measureStateManagementEfficiency()
+        }
+        
+        disabledResults.tests = tests
+        
+        -- Calculate efficiency rating
+        local efficiencyScore = 0
+        local maxScore = 3
+        
+        if tests.overhead.minimal then efficiencyScore = efficiencyScore + 1 end
+        if tests.memory.noImpact then efficiencyScore = efficiencyScore + 1 end
+        if tests.stateManagement.efficient then efficiencyScore = efficiencyScore + 1 end
+        
+        local efficiencyRatio = efficiencyScore / maxScore
+        if efficiencyRatio >= 0.9 then
+            disabledResults.efficiencyRating = "EXCELLENT"
+        elseif efficiencyRatio >= 0.66 then
+            disabledResults.efficiencyRating = "GOOD"
+        elseif efficiencyRatio >= 0.33 then
+            disabledResults.efficiencyRating = "FAIR"
+        else
+            disabledResults.efficiencyRating = "POOR"
+        end
+        
+        -- Generate recommendations
+        if not tests.overhead.minimal then
+            table.insert(disabledResults.recommendations, "Add early-return optimization to logging functions")
+        end
+        if not tests.memory.noImpact then
+            table.insert(disabledResults.recommendations, "Prevent memory allocation when disabled")
+        end
+        if not tests.stateManagement.efficient then
+            table.insert(disabledResults.recommendations, "Optimize state management operations")
+        end
+        
+        return disabledResults
+    end
+    
+    -- Category 4: Real-Time Performance Validation
+    local function analyzeRealTimePerformance()
+        local realTimeResults = {
+            description = "Real-time performance under realistic usage",
+            tests = {},
+            overallRating = "UNKNOWN",
+            recommendations = {}
+        }
+        
+        -- Test 1: Sustained Load Performance
+        local function measureSustainedLoad()
+            local originalState = self.enabled
+            self:SetEnabled(true)
+            
+            local duration = 5 -- 5 seconds
+            local startTime = GetServerTime()
+            local endTime = startTime + duration
+            local logCount = 0
+            local performanceMetrics = {}
+            
+            while GetServerTime() < endTime do
+                local iterationStart = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+                
+                self:LogInfo("SustainedTest", "Sustained load test " .. logCount, {
+                    timestamp = GetServerTime(),
+                    iteration = logCount
+                })
+                
+                local iterationEnd = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+                table.insert(performanceMetrics, iterationEnd - iterationStart)
+                
+                logCount = logCount + 1
+                
+                -- Small delay to simulate realistic usage
+                local delay = GetServerTime() + 0.01
+                while GetServerTime() < delay do end
+            end
+            
+            -- Calculate metrics
+            local totalIterationTime = 0
+            for _, time in ipairs(performanceMetrics) do
+                totalIterationTime = totalIterationTime + time
+            end
+            local avgIterationTime = totalIterationTime / #performanceMetrics
+            local logsPerSecond = logCount / duration
+            
+            -- Clean up test logs
+            while #self.logBuffer > 0 and string.find(self.logBuffer[#self.logBuffer].message, "Sustained load test") do
+                table.remove(self.logBuffer)
+            end
+            
+            self:SetEnabled(originalState)
+            
+            return {
+                duration = duration,
+                logCount = logCount,
+                avgIterationTime = avgIterationTime,
+                logsPerSecond = logsPerSecond,
+                sustainable = avgIterationTime < 0.5 and logsPerSecond > 50,
+                description = "Sustained logging load performance"
+            }
+        end
+        
+        -- Test 2: Memory Pressure Handling
+        local function measureMemoryPressureHandling()
+            local originalState = self.enabled
+            local originalMax = self.maxLogEntries
+            
+            self.maxLogEntries = 100 -- Limit for testing
+            self:SetEnabled(true)
+            
+            local startTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            
+            -- Fill buffer well beyond capacity
+            for i = 1, 200 do
+                self:LogInfo("MemoryPressure", "Pressure test " .. i, {
+                    largeData = string.rep("data", 25)
+                })
+            end
+            
+            local endTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            local totalTime = endTime - startTime
+            local finalBufferSize = #self.logBuffer
+            
+            -- Restore settings
+            self.maxLogEntries = originalMax
+            self:SetEnabled(originalState)
+            
+            return {
+                totalTime = totalTime,
+                finalBufferSize = finalBufferSize,
+                entriesAdded = 200,
+                bufferManaged = finalBufferSize <= 100,
+                performanceStable = totalTime < 50, -- 50ms for 200 entries
+                description = "Memory pressure and buffer management"
+            }
+        end
+        
+        -- Test 3: Concurrent Operation Performance
+        local function measureConcurrentOperations()
+            local originalState = self.enabled
+            self:SetEnabled(true)
+            
+            local startTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            
+            -- Simulate concurrent operations
+            for i = 1, 20 do
+                self:LogInfo("Concurrent", "Operation " .. i)
+                self:GetStats()
+                if i % 5 == 0 then
+                    self:DisplayLogsInChat(nil, nil, 2)
+                end
+                if i % 10 == 0 then
+                    self:ClearLogs()
+                end
+            end
+            
+            local endTime = debugprofilestop and debugprofilestop() or (GetServerTime() * 1000)
+            local totalTime = endTime - startTime
+            
+            self:SetEnabled(originalState)
+            
+            return {
+                totalTime = totalTime,
+                operations = 20 + 20 + 4 + 2, -- logs + stats + displays + clears
+                avgOperationTime = totalTime / 46,
+                efficient = totalTime < 25, -- 25ms for all operations
+                description = "Concurrent operation performance"
+            }
+        end
+        
+        local tests = {
+            sustainedLoad = measureSustainedLoad(),
+            memoryPressure = measureMemoryPressureHandling(),
+            concurrent = measureConcurrentOperations()
+        }
+        
+        realTimeResults.tests = tests
+        
+        -- Calculate overall rating
+        local ratingScore = 0
+        local maxScore = 3
+        
+        if tests.sustainedLoad.sustainable then ratingScore = ratingScore + 1 end
+        if tests.memoryPressure.bufferManaged and tests.memoryPressure.performanceStable then ratingScore = ratingScore + 1 end
+        if tests.concurrent.efficient then ratingScore = ratingScore + 1 end
+        
+        local ratingRatio = ratingScore / maxScore
+        if ratingRatio >= 0.9 then
+            realTimeResults.overallRating = "EXCELLENT"
+        elseif ratingRatio >= 0.66 then
+            realTimeResults.overallRating = "GOOD"
+        elseif ratingRatio >= 0.33 then
+            realTimeResults.overallRating = "FAIR"
+        else
+            realTimeResults.overallRating = "POOR"
+        end
+        
+        -- Generate recommendations
+        if not tests.sustainedLoad.sustainable then
+            table.insert(realTimeResults.recommendations, "Improve sustained load performance")
+        end
+        if not tests.memoryPressure.bufferManaged then
+            table.insert(realTimeResults.recommendations, "Fix buffer management under memory pressure")
+        end
+        if not tests.memoryPressure.performanceStable then
+            table.insert(realTimeResults.recommendations, "Optimize performance under memory pressure")
+        end
+        if not tests.concurrent.efficient then
+            table.insert(realTimeResults.recommendations, "Optimize concurrent operation performance")
+        end
+        
+        return realTimeResults
+    end
+    
+    -- Run all performance assessments
+    print("|cff00ff00Analyzing memory footprint...|r")
+    local memoryResults = analyzeMemoryFootprint()
+    assessmentResults.categories.memoryFootprint = memoryResults
+    
+    print("|cff00ff00Analyzing CPU usage...|r")
+    local cpuResults = analyzeCPUUsage()
+    assessmentResults.categories.cpuUsage = cpuResults
+    
+    print("|cff00ff00Analyzing disabled-state efficiency...|r")
+    local disabledResults = analyzeDisabledStateEfficiency()
+    assessmentResults.categories.disabledState = disabledResults
+    
+    print("|cff00ff00Analyzing real-time performance...|r")
+    local realTimeResults = analyzeRealTimePerformance()
+    assessmentResults.categories.realTimePerformance = realTimeResults
+    
+    -- Calculate overall performance score
+    local totalScore = 0
+    local maxScore = 0
+    
+    -- Memory footprint weight: 30%
+    local memoryScore = 0
+    if memoryResults.efficiencyRating == "EXCELLENT" then memoryScore = 30
+    elseif memoryResults.efficiencyRating == "GOOD" then memoryScore = 22.5
+    elseif memoryResults.efficiencyRating == "FAIR" then memoryScore = 15
+    else memoryScore = 7.5 end
+    totalScore = totalScore + memoryScore
+    maxScore = maxScore + 30
+    
+    -- CPU usage weight: 25%
+    local cpuScore = 0
+    if cpuResults.performanceRating == "EXCELLENT" then cpuScore = 25
+    elseif cpuResults.performanceRating == "GOOD" then cpuScore = 18.75
+    elseif cpuResults.performanceRating == "FAIR" then cpuScore = 12.5
+    else cpuScore = 6.25 end
+    totalScore = totalScore + cpuScore
+    maxScore = maxScore + 25
+    
+    -- Disabled state efficiency weight: 25%
+    local disabledScore = 0
+    if disabledResults.efficiencyRating == "EXCELLENT" then disabledScore = 25
+    elseif disabledResults.efficiencyRating == "GOOD" then disabledScore = 18.75
+    elseif disabledResults.efficiencyRating == "FAIR" then disabledScore = 12.5
+    else disabledScore = 6.25 end
+    totalScore = totalScore + disabledScore
+    maxScore = maxScore + 25
+    
+    -- Real-time performance weight: 20%
+    local realTimeScore = 0
+    if realTimeResults.overallRating == "EXCELLENT" then realTimeScore = 20
+    elseif realTimeResults.overallRating == "GOOD" then realTimeScore = 15
+    elseif realTimeResults.overallRating == "FAIR" then realTimeScore = 10
+    else realTimeScore = 5 end
+    totalScore = totalScore + realTimeScore
+    maxScore = maxScore + 20
+    
+    assessmentResults.performanceScore = (totalScore / maxScore) * 100
+    
+    -- Determine impact level
+    if assessmentResults.performanceScore >= 90 then
+        assessmentResults.impactLevel = "MINIMAL"
+        table.insert(assessmentResults.recommendations, "Performance impact is minimal - excellent optimization")
+    elseif assessmentResults.performanceScore >= 75 then
+        assessmentResults.impactLevel = "LOW"
+        table.insert(assessmentResults.recommendations, "Performance impact is low - good optimization")
+    elseif assessmentResults.performanceScore >= 60 then
+        assessmentResults.impactLevel = "MODERATE"
+        table.insert(assessmentResults.recommendations, "Performance impact is moderate - needs optimization")
+    elseif assessmentResults.performanceScore >= 40 then
+        assessmentResults.impactLevel = "HIGH"
+        table.insert(assessmentResults.recommendations, "Performance impact is high - requires optimization")
+    else
+        assessmentResults.impactLevel = "SEVERE"
+        table.insert(assessmentResults.recommendations, "Performance impact is severe - major optimization needed")
+    end
+    
+    -- Collect all category recommendations
+    for _, recommendation in ipairs(memoryResults.recommendations) do
+        table.insert(assessmentResults.recommendations, "Memory: " .. recommendation)
+    end
+    for _, recommendation in ipairs(cpuResults.recommendations) do
+        table.insert(assessmentResults.recommendations, "CPU: " .. recommendation)
+    end
+    for _, recommendation in ipairs(disabledResults.recommendations) do
+        table.insert(assessmentResults.recommendations, "Disabled State: " .. recommendation)
+    end
+    for _, recommendation in ipairs(realTimeResults.recommendations) do
+        table.insert(assessmentResults.recommendations, "Real-Time: " .. recommendation)
+    end
+    
+    -- Generate summary
+    assessmentResults.endTime = GetServerTime()
+    assessmentResults.duration = assessmentResults.endTime - assessmentResults.startTime
+    
+    print("|cff00ff00=== Performance Impact Assessment Summary ===|r")
+    print(string.format("|cff00ff00Overall Performance Score: %.1f%%|r", assessmentResults.performanceScore))
+    print(string.format("|cff00ff00Performance Impact Level: %s|r", assessmentResults.impactLevel))
+    print(string.format("|cff00ff00Memory Footprint: %s|r", memoryResults.efficiencyRating))
+    print(string.format("|cff00ff00CPU Usage: %s|r", cpuResults.performanceRating))
+    print(string.format("|cff00ff00Disabled State Efficiency: %s|r", disabledResults.efficiencyRating))
+    print(string.format("|cff00ff00Real-Time Performance: %s|r", realTimeResults.overallRating))
+    
+    if memoryResults.totalMemoryUsage > 0 then
+        print(string.format("|cff00ff00Total Memory Usage: %.1f KB|r", memoryResults.totalMemoryUsage / 1024))
+    end
+    
+    if cpuResults.avgExecutionTime > 0 then
+        print(string.format("|cff00ff00Avg Execution Time: %.3f ms|r", cpuResults.avgExecutionTime))
+    end
+    
+    if #assessmentResults.recommendations > 0 then
+        print("|cff00ff00Optimization Recommendations:|r")
+        for i, recommendation in ipairs(assessmentResults.recommendations) do
+            if i <= 8 then -- Show first 8 recommendations
+                print("|cff00ff00  - " .. recommendation .. "|r")
+            elseif i == 9 then
+                print(string.format("|cff00ff00  - ... and %d more|r", #assessmentResults.recommendations - 8))
+                break
+            end
+        end
+    end
+    
+    -- Log the assessment results
+    self:LogInfo("PerformanceImpactAssessment", "Performance impact assessment completed", {
+        performanceScore = assessmentResults.performanceScore,
+        impactLevel = assessmentResults.impactLevel,
+        memoryRating = memoryResults.efficiencyRating,
+        cpuRating = cpuResults.performanceRating,
+        disabledRating = disabledResults.efficiencyRating,
+        realTimeRating = realTimeResults.overallRating,
+        duration = assessmentResults.duration
+    })
+    
+    return assessmentResults
+end
+
 -- Memory management functions for WoW addon efficiency
 function SLH.Debug:ManageMemory()
     print("|cff00ff00=== SLH Debug: Memory Management ===|r")

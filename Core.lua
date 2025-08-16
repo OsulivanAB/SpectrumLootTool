@@ -391,6 +391,9 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
         elseif args[2] == "wow" or args[2] == "compatibility" or args[2] == "compat" then
             -- Task 20: WoW Addon Lua Compatibility Verification
             SLH.Debug:RunWoWCompatibilityVerification()
+        elseif args[2] == "performance" or args[2] == "perf" or args[2] == "impact" then
+            -- Task 21: Performance Impact Assessment
+            SLH.Debug:RunPerformanceImpactAssessment()
         else
             print("|cff00ff00=== SLH Debug Commands ===|r")
             print("|cff00ff00/slh debuglog on/off - Enable/disable debug logging|r")
@@ -404,6 +407,7 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
             print("|cff00ff00/slh debuglog verify - Run completeness verification|r")
             print("|cff00ff00/slh debuglog errors - Run error handling validation|r")
             print("|cff00ff00/slh debuglog wow - Run WoW compatibility verification|r")
+            print("|cff00ff00/slh debuglog performance - Run performance impact assessment|r")
         end
         return
     end

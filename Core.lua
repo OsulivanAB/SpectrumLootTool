@@ -385,6 +385,12 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
         elseif args[2] == "verify" or args[2] == "completeness" or args[2] == "check" then
             -- Task 18: Debug System Completeness Verification
             SLH.Debug:RunCompletenessVerification()
+        elseif args[2] == "errors" or args[2] == "errorhandling" or args[2] == "validate" then
+            -- Task 19: Error Handling Validation
+            SLH.Debug:RunErrorHandlingValidation()
+        elseif args[2] == "wow" or args[2] == "compatibility" or args[2] == "compat" then
+            -- Task 20: WoW Addon Lua Compatibility Verification
+            SLH.Debug:RunWoWCompatibilityVerification()
         else
             print("|cff00ff00=== SLH Debug Commands ===|r")
             print("|cff00ff00/slh debuglog on/off - Enable/disable debug logging|r")
@@ -396,6 +402,8 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
             print("|cff00ff00/slh debuglog test - Integration testing commands|r")
             print("|cff00ff00/slh debuglog optimize - Performance optimization commands|r")
             print("|cff00ff00/slh debuglog verify - Run completeness verification|r")
+            print("|cff00ff00/slh debuglog errors - Run error handling validation|r")
+            print("|cff00ff00/slh debuglog wow - Run WoW compatibility verification|r")
         end
         return
     end

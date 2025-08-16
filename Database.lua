@@ -1664,20 +1664,180 @@ function Database:UpgradeSchema(fromVersion, toVersion)
     -- TODO: Log successful upgrade completion
 end
 
--- TODO: Migrate data between WoW versions
+-- Migrate data between WoW versions
 function Database:MigrateToNewWoWVersion(oldVersion, newVersion)
-    if SLH.Debug then
-        SLH.Debug:LogDebug("Database", "MigrateToNewWoWVersion() called", {
-            oldVersion = oldVersion,
-            newVersion = newVersion
-        })
-    end
-    
-    -- TODO: Preserve old version data for historical tracking
-    -- TODO: Reset VenariiCharges to 0 for new version
-    -- TODO: Reset all equipment slots to false for new version
-    -- TODO: Create new entries with new version keys
-    -- TODO: Log migration completion with entry counts
+    return self:SafeExecute("MigrateToNewWoWVersion", function()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "MigrateToNewWoWVersion() starting migration", {
+                oldVersion = oldVersion,
+                newVersion = newVersion,
+                operation = "version_migration"
+            })
+        end
+        
+        -- Validate input parameters
+        if not oldVersion or type(oldVersion) ~= "string" or oldVersion == "" then
+            local errorMsg = "Invalid oldVersion parameter"
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", errorMsg, {
+                    oldVersion = oldVersion,
+                    type = type(oldVersion)
+                })
+            end
+            return false, errorMsg
+        end
+        
+        if not newVersion or type(newVersion) ~= "string" or newVersion == "" then
+            local errorMsg = "Invalid newVersion parameter"
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", errorMsg, {
+                    newVersion = newVersion,
+                    type = type(newVersion)
+                })
+            end
+            return false, errorMsg
+        end
+        
+        -- Ensure database is initialized
+        if not SpectrumLootHelperDB or not SpectrumLootHelperDB.playerData then
+            if SLH.Debug then
+                SLH.Debug:LogWarn("Database", "Database not initialized for migration", {
+                    oldVersion = oldVersion,
+                    newVersion = newVersion
+                })
+            end
+            return true, "No data to migrate - database not initialized"
+        end
+        
+        -- Collect migration statistics
+        local stats = {
+            oldVersionEntries = 0,
+            newVersionEntries = 0,
+            migratedPlayers = 0,
+            preservedEntries = 0,
+            resetCharges = 0,
+            resetEquipment = 0
+        }
+        
+        -- Process each player's data
+        for playerKey, playerData in pairs(SpectrumLootHelperDB.playerData) do
+            
+            if SLH.Debug then
+                SLH.Debug:LogDebug("Database", "Processing player for migration", {
+                    playerKey = playerKey,
+                    oldVersion = oldVersion,
+                    newVersion = newVersion
+                })
+            end
+            
+            -- Check if this entry belongs to the old version
+            if playerKey:find(oldVersion, 1, true) then -- Plain text search
+                stats.oldVersionEntries = stats.oldVersionEntries + 1
+                
+                -- Extract player name and server from old key
+                local playerName, serverName = playerKey:match("^(.+)%-(.+)%-%d+%.%d+$")
+                if playerName and serverName then
+                    
+                    -- Generate new version key
+                    local newPlayerKey = playerName .. "-" .. serverName .. "-" .. newVersion
+                    
+                    if SLH.Debug then
+                        SLH.Debug:LogDebug("Database", "Creating new version entry", {
+                            oldKey = playerKey,
+                            newKey = newPlayerKey,
+                            playerName = playerName,
+                            serverName = serverName,
+                            oldVersion = oldVersion,
+                            newVersion = newVersion
+                        })
+                    end
+                    
+                    -- Create fresh entry for new version with reset values
+                    local newEntry = {
+                        PlayerName = playerName,
+                        ServerName = serverName,
+                        WoWVersion = newVersion,
+                        VenariiCharges = 0, -- Reset charges for new version
+                        Equipment = {
+                            [1] = false,   -- Head
+                            [2] = false,   -- Neck
+                            [3] = false,   -- Shoulder
+                            [4] = false,   -- Shirt
+                            [5] = false,   -- Chest
+                            [6] = false,   -- Waist
+                            [7] = false,   -- Legs
+                            [8] = false,   -- Feet
+                            [9] = false,   -- Wrist
+                            [10] = false,  -- Hands
+                            [11] = false,  -- Finger1
+                            [12] = false,  -- Finger2
+                            [13] = false,  -- Trinket1
+                            [14] = false,  -- Trinket2
+                            [15] = false,  -- Back
+                            [16] = false   -- MainHand
+                        },
+                        LastUpdate = GetServerTime()
+                    }
+                    
+                    -- Store new entry
+                    SpectrumLootHelperDB.playerData[newPlayerKey] = newEntry
+                    stats.newVersionEntries = stats.newVersionEntries + 1
+                    stats.migratedPlayers = stats.migratedPlayers + 1
+                    stats.resetCharges = stats.resetCharges + 1
+                    stats.resetEquipment = stats.resetEquipment + 16 -- All 16 slots reset
+                    
+                    -- Preserve old version data (don't delete old entries)
+                    stats.preservedEntries = stats.preservedEntries + 1
+                    
+                    if SLH.Debug then
+                        SLH.Debug:LogInfo("Database", "Successfully migrated player to new version", {
+                            playerName = playerName,
+                            serverName = serverName,
+                            oldKey = playerKey,
+                            newKey = newPlayerKey,
+                            oldVersion = oldVersion,
+                            newVersion = newVersion
+                        })
+                    end
+                    
+                else
+                    if SLH.Debug then
+                        SLH.Debug:LogWarn("Database", "Could not parse player key for migration", {
+                            playerKey = playerKey,
+                            pattern = "^(.+)%-(.+)%-%d+%.%d+$"
+                        })
+                    end
+                end
+            end
+        end
+        
+        -- Log migration completion with comprehensive statistics
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Migration completed successfully", {
+                oldVersion = oldVersion,
+                newVersion = newVersion,
+                statistics = stats,
+                totalProcessed = stats.oldVersionEntries,
+                totalMigrated = stats.newVersionEntries,
+                playersAffected = stats.migratedPlayers,
+                dataPreserved = stats.preservedEntries,
+                operation = "migration_complete"
+            })
+        end
+        
+        -- Return success with detailed migration report
+        local message = string.format(
+            "Migration completed: %d players migrated from %s to %s (%d old entries preserved)",
+            stats.migratedPlayers,
+            oldVersion,
+            newVersion,
+            stats.preservedEntries
+        )
+        
+        return true, message, stats
+        
+    end)
 end
 
 -- ============================================================================

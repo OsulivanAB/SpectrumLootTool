@@ -48,6 +48,15 @@
 - **Data Validation**: All initial data validated using ValidateVenariiCharges() and ValidateEquipment() before application
 - **Timestamp Management**: LastUpdate automatically set to current time for all new entries
 - **Entry Validation**: Complete entry validation using ValidateEntry() before saving to database
+- **Migration Support**: Implemented Database:MigrateToNewWoWVersion() for WoW version transitions and expansion compatibility
+- **Version Migration**: Comprehensive migration system creates fresh entries for new WoW versions with reset values
+- **Charges Reset**: All Venarii charges reset to 0 for new version entries during migration process
+- **Equipment Reset**: All 16 equipment slots reset to false for new version entries during migration
+- **Data Preservation**: Old version data preserved for historical tracking and rollback capability
+- **Migration Statistics**: Comprehensive migration reporting with entry counts, player statistics, and operation summary
+- **Key Generation**: Automatic generation of new version player keys using updated WoW version information
+- **Migration Validation**: Input parameter validation and database state checking before migration operations
+- **Task 15 Complete**: Basic migration support fully implemented with data preservation and comprehensive reset functionality
 - **Database Persistence**: New entries saved to SpectrumLootHelperDB.playerData with proper error handling
 - **Task 10 Complete**: Add new entry functionality fully implemented with validation, duplicate checking, and persistence
 - **Retrieve Entry Function**: Implemented Database:GetEntry() with comprehensive entry retrieval and safe null handling

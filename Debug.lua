@@ -1137,3 +1137,404 @@ function SLH.Debug:Toggle()
         })
     end
 end
+
+-- ========================================
+-- TASK 15: INTEGRATION TESTING - CORE FUNCTIONS
+-- ========================================
+
+-- Comprehensive integration test for core debug system functionality
+function SLH.Debug:RunCoreIntegrationTest()
+    local testResults = {
+        testName = "Debug System Core Integration Test",
+        startTime = GetServerTime(),
+        tests = {},
+        passed = 0,
+        failed = 0,
+        errors = {}
+    }
+    
+    print("|cff00ff00=== SLH Debug: Starting Core Integration Test ===|r")
+    
+    -- Test 1: System Initialization
+    local function testInit()
+        local success, result = pcall(function()
+            -- Verify Init() sets up required components
+            local wasEnabled = self.enabled
+            self:Init()
+            
+            return {
+                hasSessionStartTime = self.sessionStartTime ~= nil,
+                hasLogBuffer = type(self.logBuffer) == "table",
+                hasStats = type(self.stats) == "table",
+                enabledStatePreserved = self.enabled == wasEnabled
+            }
+        end)
+        
+        if success and result.hasSessionStartTime and result.hasLogBuffer and result.hasStats then
+            return true, "Init() properly initializes all components"
+        else
+            return false, "Init() failed: " .. (success and "Missing components" or tostring(result))
+        end
+    end
+    
+    -- Test 2: Basic Logging Flow
+    local function testLoggingFlow()
+        local success, result = pcall(function()
+            local initialCount = #self.logBuffer
+            local wasEnabled = self.enabled
+            
+            -- Ensure debug is enabled for testing
+            if not self.enabled then
+                self:SetEnabled(true)
+            end
+            
+            -- Test each log level
+            self:LogInfo("IntegrationTest", "Test info message", {testData = "info"})
+            self:LogWarn("IntegrationTest", "Test warn message", {testData = "warn"})
+            self:LogError("IntegrationTest", "Test error message", {testData = "error"})
+            self:LogDebug("IntegrationTest", "Test debug message", {testData = "debug"})
+            
+            local finalCount = #self.logBuffer
+            local entriesAdded = finalCount - initialCount
+            
+            -- Restore original enabled state
+            self:SetEnabled(wasEnabled)
+            
+            return {
+                entriesAdded = entriesAdded,
+                expectedEntries = 4,
+                logBufferValid = type(self.logBuffer) == "table"
+            }
+        end)
+        
+        if success and result.entriesAdded >= 4 and result.logBufferValid then
+            return true, string.format("Logging flow successful (%d entries added)", result.entriesAdded)
+        else
+            return false, "Logging flow failed: " .. (success and ("Added " .. result.entriesAdded .. " entries") or tostring(result))
+        end
+    end
+    
+    -- Test 3: Log Retrieval and Filtering
+    local function testLogRetrieval()
+        local success, result = pcall(function()
+            -- Test GetSessionLogs with various filters
+            local allLogs = self:GetSessionLogs()
+            local infoLogs = self:GetSessionLogs("INFO")
+            local testComponentLogs = self:GetSessionLogs(nil, "IntegrationTest")
+            local limitedLogs = self:GetSessionLogs(nil, nil, 5)
+            
+            return {
+                hasAllLogs = #allLogs > 0,
+                hasInfoLogs = #infoLogs > 0,
+                hasComponentLogs = #testComponentLogs > 0,
+                limitWorking = #limitedLogs <= 5,
+                allLogsCount = #allLogs
+            }
+        end)
+        
+        if success and result.hasAllLogs and result.limitWorking then
+            return true, string.format("Log retrieval successful (%d total logs)", result.allLogsCount)
+        else
+            return false, "Log retrieval failed: " .. (success and "No logs or limit issue" or tostring(result))
+        end
+    end
+    
+    -- Test 4: Statistics Generation
+    local function testStatistics()
+        local success, result = pcall(function()
+            local stats = self:GetStats()
+            
+            return {
+                hasStats = type(stats) == "table",
+                hasTotalEntries = type(stats.totalEntries) == "number",
+                hasMemoryUsage = type(stats.memoryUsage) == "number",
+                hasSessionDuration = type(stats.sessionDuration) == "number",
+                hasLevelBreakdown = type(stats.logEntriesByLevel) == "table",
+                hasComponentBreakdown = type(stats.logEntriesByComponent) == "table"
+            }
+        end)
+        
+        if success and result.hasStats and result.hasTotalEntries and result.hasMemoryUsage then
+            return true, "Statistics generation successful"
+        else
+            return false, "Statistics generation failed: Missing required fields"
+        end
+    end
+    
+    -- Test 5: File Operations (if enabled)
+    local function testFileOperations()
+        local success, result = pcall(function()
+            -- Test GetLogFileInfo
+            local fileInfo = self:GetLogFileInfo()
+            
+            -- Test FlushToFile (only if enabled)
+            local flushSuccess = false
+            if self.enabled then
+                flushSuccess = self:FlushToFile()
+            end
+            
+            return {
+                hasFileInfo = type(fileInfo) == "table",
+                hasFilePath = type(fileInfo.path) == "string",
+                flushAttempted = self.enabled,
+                flushResult = flushSuccess
+            }
+        end)
+        
+        if success and result.hasFileInfo and result.hasFilePath then
+            return true, "File operations functional"
+        else
+            return false, "File operations failed: " .. (success and "Missing file info" or tostring(result))
+        end
+    end
+    
+    -- Run all tests
+    local tests = {
+        {name = "System Initialization", func = testInit},
+        {name = "Basic Logging Flow", func = testLoggingFlow},
+        {name = "Log Retrieval & Filtering", func = testLogRetrieval},
+        {name = "Statistics Generation", func = testStatistics},
+        {name = "File Operations", func = testFileOperations}
+    }
+    
+    for _, test in ipairs(tests) do
+        local success, message = test.func()
+        local result = {
+            name = test.name,
+            passed = success,
+            message = message,
+            timestamp = GetServerTime()
+        }
+        
+        table.insert(testResults.tests, result)
+        
+        if success then
+            testResults.passed = testResults.passed + 1
+            print("|cff00ff00✅ " .. test.name .. ": " .. message .. "|r")
+        else
+            testResults.failed = testResults.failed + 1
+            table.insert(testResults.errors, test.name .. ": " .. message)
+            print("|cffff0000❌ " .. test.name .. ": " .. message .. "|r")
+        end
+    end
+    
+    -- Generate summary
+    testResults.endTime = GetServerTime()
+    testResults.duration = testResults.endTime - testResults.startTime
+    testResults.totalTests = #tests
+    testResults.successRate = (testResults.passed / testResults.totalTests) * 100
+    
+    print("|cff00ff00=== Integration Test Summary ===|r")
+    print(string.format("|cff00ff00Tests Passed: %d/%d (%.1f%%)|r", 
+        testResults.passed, testResults.totalTests, testResults.successRate))
+    print(string.format("|cff00ff00Duration: %.2f seconds|r", testResults.duration))
+    
+    if testResults.failed > 0 then
+        print("|cffff0000Failed Tests:|r")
+        for _, error in ipairs(testResults.errors) do
+            print("|cffff0000  - " .. error .. "|r")
+        end
+    end
+    
+    -- Log the test results
+    self:LogInfo("IntegrationTest", "Core integration test completed", {
+        passed = testResults.passed,
+        failed = testResults.failed,
+        successRate = testResults.successRate,
+        duration = testResults.duration
+    })
+    
+    return testResults
+end
+
+-- Performance validation test for debug system efficiency
+function SLH.Debug:RunPerformanceValidation()
+    local perfResults = {
+        testName = "Debug System Performance Validation",
+        startTime = GetServerTime(),
+        metrics = {},
+        recommendations = {}
+    }
+    
+    print("|cff00ff00=== SLH Debug: Starting Performance Validation ===|r")
+    
+    -- Test 1: Logging Performance (when enabled)
+    local function measureLoggingPerformance()
+        if not self.enabled then
+            return {
+                skipped = true,
+                reason = "Debug disabled - performance impact minimal"
+            }
+        end
+        
+        local iterations = 100
+        local startTime = debugprofilestop and debugprofilestop() or GetServerTime() * 1000
+        
+        for i = 1, iterations do
+            self:LogDebug("PerfTest", "Performance test message " .. i, {
+                iteration = i,
+                data = {test = true, value = i * 2}
+            })
+        end
+        
+        local endTime = debugprofilestop and debugprofilestop() or GetServerTime() * 1000
+        local totalTime = endTime - startTime
+        local avgTimePerLog = totalTime / iterations
+        
+        return {
+            iterations = iterations,
+            totalTime = totalTime,
+            avgTimePerLog = avgTimePerLog,
+            logsPerSecond = 1000 / avgTimePerLog
+        }
+    end
+    
+    -- Test 2: Memory Usage Assessment
+    local function assessMemoryUsage()
+        local stats = self:GetStats()
+        local bufferSize = #self.logBuffer
+        local estimatedMemory = stats.memoryUsage or 0
+        
+        -- Memory efficiency recommendations
+        local recommendations = {}
+        if bufferSize > 800 then
+            table.insert(recommendations, "Consider clearing old logs - buffer approaching limit")
+        end
+        if estimatedMemory > 1024 * 1024 then  -- 1MB
+            table.insert(recommendations, "Memory usage high - consider reducing log retention")
+        end
+        
+        return {
+            bufferSize = bufferSize,
+            maxBufferSize = self.maxLogEntries,
+            bufferUtilization = (bufferSize / self.maxLogEntries) * 100,
+            estimatedMemoryBytes = estimatedMemory,
+            estimatedMemoryMB = estimatedMemory / (1024 * 1024),
+            recommendations = recommendations
+        }
+    end
+    
+    -- Test 3: Disabled State Performance
+    local function testDisabledPerformance()
+        local wasEnabled = self.enabled
+        self:SetEnabled(false)
+        
+        local iterations = 1000
+        local startTime = debugprofilestop and debugprofilestop() or GetServerTime() * 1000
+        
+        -- These should be nearly instant when disabled
+        for i = 1, iterations do
+            self:LogInfo("PerfTest", "This should be ignored", {data = i})
+        end
+        
+        local endTime = debugprofilestop and debugprofilestop() or GetServerTime() * 1000
+        local totalTime = endTime - startTime
+        
+        self:SetEnabled(wasEnabled)
+        
+        return {
+            iterations = iterations,
+            totalTime = totalTime,
+            avgTimePerLog = totalTime / iterations,
+            efficientlySkipped = totalTime < 10  -- Should be very fast when disabled
+        }
+    end
+    
+    -- Run performance tests
+    local loggingPerf = measureLoggingPerformance()
+    local memoryAssess = assessMemoryUsage()
+    local disabledPerf = testDisabledPerformance()
+    
+    perfResults.metrics = {
+        loggingPerformance = loggingPerf,
+        memoryUsage = memoryAssess,
+        disabledPerformance = disabledPerf
+    }
+    
+    -- Generate performance report
+    print("|cff00ff00--- Logging Performance ---|r")
+    if loggingPerf.skipped then
+        print("|cffff8800Skipped: " .. loggingPerf.reason .. "|r")
+    else
+        print(string.format("|cff00ff00Average time per log: %.3f ms|r", loggingPerf.avgTimePerLog))
+        print(string.format("|cff00ff00Logs per second: %.1f|r", loggingPerf.logsPerSecond))
+        
+        if loggingPerf.avgTimePerLog > 1.0 then
+            table.insert(perfResults.recommendations, "Logging performance may be slow for high-frequency operations")
+        end
+    end
+    
+    print("|cff00ff00--- Memory Usage ---|r")
+    print(string.format("|cff00ff00Buffer utilization: %.1f%% (%d/%d entries)|r", 
+        memoryAssess.bufferUtilization, memoryAssess.bufferSize, memoryAssess.maxBufferSize))
+    print(string.format("|cff00ff00Estimated memory: %.2f MB|r", memoryAssess.estimatedMemoryMB))
+    
+    print("|cff00ff00--- Disabled State Performance ---|r")
+    print(string.format("|cff00ff00Disabled overhead: %.3f ms for %d calls|r", 
+        disabledPerf.totalTime, disabledPerf.iterations))
+    print(string.format("|cff00ff00Efficiently skipped: %s|r", 
+        disabledPerf.efficientlySkipped and "Yes" or "No"))
+    
+    if not disabledPerf.efficientlySkipped then
+        table.insert(perfResults.recommendations, "Disabled state performance needs optimization")
+    end
+    
+    -- Combine all recommendations
+    for _, rec in ipairs(memoryAssess.recommendations) do
+        table.insert(perfResults.recommendations, rec)
+    end
+    
+    if #perfResults.recommendations > 0 then
+        print("|cffff8800--- Recommendations ---|r")
+        for _, rec in ipairs(perfResults.recommendations) do
+            print("|cffff8800- " .. rec .. "|r")
+        end
+    else
+        print("|cff00ff00--- All Performance Metrics Optimal ---|r")
+    end
+    
+    perfResults.endTime = GetServerTime()
+    perfResults.duration = perfResults.endTime - perfResults.startTime
+    
+    -- Log performance results
+    self:LogInfo("PerformanceTest", "Performance validation completed", {
+        duration = perfResults.duration,
+        recommendationCount = #perfResults.recommendations,
+        loggingEnabled = not (loggingPerf.skipped or false)
+    })
+    
+    return perfResults
+end
+
+-- Convenience function to run all integration tests
+function SLH.Debug:RunAllIntegrationTests()
+    print("|cff00ff00========================================|r")
+    print("|cff00ff00    SLH Debug Integration Testing    |r") 
+    print("|cff00ff00========================================|r")
+    
+    local coreResults = self:RunCoreIntegrationTest()
+    print("")
+    local perfResults = self:RunPerformanceValidation()
+    
+    print("|cff00ff00========================================|r")
+    print("|cff00ff00         Testing Complete           |r")
+    print("|cff00ff00========================================|r")
+    
+    local allPassed = coreResults.failed == 0
+    local hasPerformanceIssues = #perfResults.recommendations > 0
+    
+    if allPassed and not hasPerformanceIssues then
+        print("|cff00ff00🎉 All tests passed with optimal performance!|r")
+    elseif allPassed then
+        print("|cffff8800✅ All tests passed, but performance could be improved.|r")
+    else
+        print("|cffff0000❌ Some tests failed. Review the results above.|r")
+    end
+    
+    return {
+        coreIntegration = coreResults,
+        performance = perfResults,
+        overallSuccess = allPassed,
+        needsOptimization = hasPerformanceIssues
+    }
+end

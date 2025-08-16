@@ -23,6 +23,9 @@ function SLH:Init()
         self.Debug:Init()
         self.Debug:StartSession()
         self.Debug:LogInfo("Core", "Addon initialized", { version = self.version })
+        self.Debug:LogInfo("Core", "Debug system Task 15 integration testing available", { 
+            commands = { "/slh debuglog test core", "/slh debuglog test perf", "/slh debuglog test all" }
+        })
     end
     
     -- Recalculate values from log in case of inconsistencies
@@ -341,6 +344,20 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
             if stats.sessionDuration > 0 then
                 print("|cff00ff00Session Duration: " .. stats.sessionDuration .. "s|r")
             end
+        elseif args[2] == "test" then
+            -- Task 15: Integration Testing Commands
+            if args[3] == "core" then
+                SLH.Debug:RunCoreIntegrationTest()
+            elseif args[3] == "performance" or args[3] == "perf" then
+                SLH.Debug:RunPerformanceValidation()
+            elseif args[3] == "all" then
+                SLH.Debug:RunAllIntegrationTests()
+            else
+                print("|cff00ff00=== SLH Debug Integration Tests ===|r")
+                print("|cff00ff00/slh debuglog test core - Run core functionality test|r")
+                print("|cff00ff00/slh debuglog test perf - Run performance validation|r")
+                print("|cff00ff00/slh debuglog test all - Run all integration tests|r")
+            end
         else
             print("|cff00ff00=== SLH Debug Commands ===|r")
             print("|cff00ff00/slh debuglog on/off - Enable/disable debug logging|r")
@@ -349,6 +366,7 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
             print("|cff00ff00/slh debuglog clear - Clear debug logs|r")
             print("|cff00ff00/slh debuglog export - Export logs for bug report|r")
             print("|cff00ff00/slh debuglog stats - Show debug statistics|r")
+            print("|cff00ff00/slh debuglog test - Integration testing commands|r")
         end
         return
     end

@@ -572,18 +572,93 @@ function SLH.Debug:ClearLogs()
 end
 
 -- Display debug logs in chat window
+-- Display debug logs in chat window
 function SLH.Debug:DisplayLogsInChat(level, component, count)
-    -- Placeholder for displaying logs in chat
+    -- Show debug logs in WoW chat window
     -- Parameters:
     -- - level: string, optional filter by log level
     -- - component: string, optional filter by component  
     -- - count: number, optional limit number of entries (default 10)
+    -- Dependencies: GetSessionLogs() for data retrieval
+    -- Focus: Chat formatting, color coding, pagination
     
-    -- Will handle:
-    -- - Format log entries for chat display
-    -- - Apply color coding by log level
-    -- - Pagination for large log sets
-    -- - User-friendly timestamp formatting
+    -- Set default count if not specified
+    local displayCount = count or 10
+    
+    -- Parameter validation
+    if level and type(level) ~= "string" then
+        print("|cFFFF0000[Spectrum Loot Helper]|r Error: level must be a string")
+        return
+    end
+    if component and type(component) ~= "string" then
+        print("|cFFFF0000[Spectrum Loot Helper]|r Error: component must be a string")
+        return
+    end
+    if displayCount and (type(displayCount) ~= "number" or displayCount <= 0) then
+        print("|cFFFF0000[Spectrum Loot Helper]|r Error: count must be a positive number")
+        return
+    end
+    
+    -- Early exit if debug logging is disabled
+    if not self:IsEnabled() then
+        print("|cFFFFAA00[Spectrum Loot Helper]|r Debug logging is disabled. Use /slh debuglog enable to turn it on.")
+        return
+    end
+    
+    -- Retrieve filtered logs using existing GetSessionLogs function
+    local logs = self:GetSessionLogs(level, component, displayCount)
+    
+    -- Check if any logs were found
+    if not logs or #logs == 0 then
+        local filterText = ""
+        if level or component then
+            local filters = {}
+            if level then table.insert(filters, "level=" .. level) end
+            if component then table.insert(filters, "component=" .. component) end
+            filterText = " (filtered by " .. table.concat(filters, ", ") .. ")"
+        end
+        print("|cFF808080[Spectrum Loot Helper]|r No debug logs found" .. filterText .. ".")
+        return
+    end
+    
+    -- Display header with filter information
+    local headerText = "|cFF00FF00[Spectrum Loot Helper]|r Debug Logs"
+    if level or component then
+        local filters = {}
+        if level then table.insert(filters, "Level: " .. level) end
+        if component then table.insert(filters, "Component: " .. component) end
+        headerText = headerText .. " |cFF808080(" .. table.concat(filters, ", ") .. ")|r"
+    end
+    headerText = headerText .. " |cFF808080- Showing " .. #logs .. " entries|r"
+    print(headerText)
+    print("|cFF808080" .. string.rep("-", 60) .. "|r")
+    
+    -- Display each log entry with appropriate color coding
+    for i, logEntry in ipairs(logs) do
+        local formattedEntry = self:_FormatLogEntryForChat(logEntry)
+        print(formattedEntry)
+    end
+    
+    -- Display footer with pagination info
+    local totalLogs = #self.logBuffer
+    if #logs < totalLogs then
+        local remaining = totalLogs - #logs
+        print("|cFF808080" .. string.rep("-", 60) .. "|r")
+        print("|cFF808080[Spectrum Loot Helper]|r " .. remaining .. " more entries available. Use count parameter to see more.")
+    end
+    
+    -- Log the display action (without creating recursion)
+    if not self._displayingLogs then
+        self._displayingLogs = true
+        self:LogDebug("Debug", "Debug logs displayed in chat", {
+            entriesShown = #logs,
+            totalEntries = totalLogs,
+            levelFilter = level,
+            componentFilter = component,
+            displayCount = displayCount
+        })
+        self._displayingLogs = false
+    end
 end
 
 -- Get debug system statistics
@@ -723,6 +798,80 @@ function SLH.Debug:GetStats()
     end
     
     return stats
+end
+
+-- Internal helper function to format a log entry for chat display
+function SLH.Debug:_FormatLogEntryForChat(logEntry)
+    -- Format a single log entry for display in WoW chat window
+    -- Applies color coding by log level and formats timestamps appropriately
+    
+    if not logEntry then
+        return "|cFFFF0000[DEBUG]|r Invalid log entry"
+    end
+    
+    -- Color coding by log level
+    local levelColors = {
+        ERROR = "|cFFFF0000",   -- Red
+        WARN  = "|cFFFFAA00",   -- Orange
+        INFO  = "|cFF00FF00",   -- Green
+        DEBUG = "|cFF808080"    -- Gray
+    }
+    
+    local levelColor = levelColors[logEntry.level] or "|cFFFFFFFF" -- White fallback
+    local resetColor = "|r"
+    
+    -- Format session time for readability
+    local sessionTimeStr = ""
+    if logEntry.sessionTime and logEntry.sessionTime >= 0 then
+        if logEntry.sessionTime < 60 then
+            sessionTimeStr = string.format("+%ds", logEntry.sessionTime)
+        elseif logEntry.sessionTime < 3600 then
+            local minutes = math.floor(logEntry.sessionTime / 60)
+            local seconds = logEntry.sessionTime % 60
+            sessionTimeStr = string.format("+%dm%ds", minutes, seconds)
+        else
+            local hours = math.floor(logEntry.sessionTime / 3600)
+            local minutes = math.floor((logEntry.sessionTime % 3600) / 60)
+            sessionTimeStr = string.format("+%dh%dm", hours, minutes)
+        end
+    end
+    
+    -- Format component with fixed width for alignment
+    local componentStr = logEntry.component or "UNKNOWN"
+    if #componentStr > 8 then
+        componentStr = componentStr:sub(1, 7) .. "+"
+    else
+        componentStr = componentStr .. string.rep(" ", 8 - #componentStr)
+    end
+    
+    -- Build the formatted message
+    local formattedMsg = string.format(
+        "%s[%s]%s %s%s%s %s%s%s: %s",
+        levelColor,
+        logEntry.level or "UNKNOWN",
+        resetColor,
+        "|cFF808080",
+        sessionTimeStr,
+        resetColor,
+        "|cFF606060",
+        componentStr,
+        resetColor,
+        logEntry.message or "No message"
+    )
+    
+    -- Add data context if present (limit length to prevent chat spam)
+    if logEntry.data then
+        local dataStr = self:_SerializeLogData(logEntry.data)
+        if dataStr and #dataStr > 0 then
+            -- Limit data display to prevent chat flooding
+            if #dataStr > 100 then
+                dataStr = dataStr:sub(1, 97) .. "..."
+            end
+            formattedMsg = formattedMsg .. " |cFF404040| " .. dataStr .. resetColor
+        end
+    end
+    
+    return formattedMsg
 end
 
 -- Internal helper function to estimate memory usage of data tables

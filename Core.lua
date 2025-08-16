@@ -43,8 +43,8 @@ function SLH:Init()
 	if self.Database then
 		local dbInitSuccess = self.Database:Init()
 		if self.Debug then
-			self.Debug:LogInfo("Core", "Database initialization result", { 
-				success = dbInitSuccess 
+			self.Debug:LogInfo("Core", "Database initialization result", {
+				success = dbInitSuccess,
 			})
 		end
 	end

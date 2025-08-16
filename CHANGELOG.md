@@ -57,6 +57,17 @@
 - **Comprehensive Logging**: Detailed logging for entry lookup attempts, results, and data integrity status
 - **Error Recovery**: Graceful handling of missing database, invalid keys, and corrupted entries with proper fallbacks
 - **Task 11 Complete**: Retrieve entry functionality fully implemented with safe null handling and integrity checking
+- **Update Entry Function**: Implemented Database:UpdateEntry() with comprehensive partial update support and validation
+- **Partial Updates**: Supports updating individual fields (VenariiCharges, Equipment slots) without affecting other data
+- **Change Tracking**: Detailed tracking and logging of all field changes during update operations
+- **Entry Existence Validation**: Checks for existing entries before attempting updates to prevent creation
+- **Deep Copy Safety**: Safe deep copying of existing entries to prevent data corruption during updates
+- **Update Data Validation**: Comprehensive validation of update data using ValidateVenariiCharges() and ValidateEquipment()
+- **Equipment Slot Updates**: Supports partial equipment updates for individual slot modifications
+- **Timestamp Management**: Automatic LastUpdate timestamp updating for all successful entry modifications
+- **Pre-save Validation**: Complete entry validation using ValidateEntry() before saving updated data
+- **Change Logging**: Detailed logging of all changed fields with old and new values for debugging
+- **Task 12 Complete**: Update existing entry functionality fully implemented with partial updates and comprehensive validation
 - **Database Persistence**: New entries saved to SpectrumLootHelperDB.playerData with proper error handling
 - **Task 10 Complete**: Add new entry functionality fully implemented with validation, duplicate checking, and persistence
 - **Error Logging**: Enhanced error logging with Debug module integration for all caught exceptions

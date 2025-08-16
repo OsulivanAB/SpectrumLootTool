@@ -617,7 +617,9 @@ function Database:_AddEntryInternal(playerName, serverName, wowVersion, initialD
     return true, key
 end
 
--- TODO: Update existing player entry
+-- Update existing player entry
+-- Supports partial updates, validates changes before applying, and updates timestamp
+-- Returns success status and updated entry data or error message
 function Database:UpdateEntry(playerName, serverName, wowVersion, updateData)
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "UpdateEntry() called", {
@@ -628,13 +630,245 @@ function Database:UpdateEntry(playerName, serverName, wowVersion, updateData)
         })
     end
     
-    -- TODO: Generate key and check if entry exists
-    -- TODO: Validate update data structure
-    -- TODO: Apply updates to existing entry
-    -- TODO: Update LastUpdate timestamp
-    -- TODO: Validate updated entry
-    -- TODO: Save changes to database
-    -- TODO: Log successful update with changed fields
+    -- Wrap entry update in error handling
+    local success, result, updatedEntry = SafeExecute(function()
+        return Database:_UpdateEntryInternal(playerName, serverName, wowVersion, updateData)
+    end, "UpdateEntry")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry update failed", {
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion,
+                error = result
+            })
+        end
+        return false, result
+    end
+    
+    return result, updatedEntry
+end
+
+-- Internal entry update logic (separated for error handling)
+function Database:_UpdateEntryInternal(playerName, serverName, wowVersion, updateData)
+    
+    -- Generate key and check if entry exists
+    local key = self:GenerateKey(playerName, serverName, wowVersion)
+    if not key then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Failed to generate key for entry update", {
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion
+            })
+        end
+        return false, "Failed to generate player key"
+    end
+    
+    -- Check if database structures exist
+    if not SpectrumLootHelperDB then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "SpectrumLootHelperDB not available for UpdateEntry", {})
+        end
+        return false, "Database not initialized"
+    end
+    
+    if not SpectrumLootHelperDB.playerData then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "playerData table not available for UpdateEntry", {})
+        end
+        return false, "Player data table not initialized"
+    end
+    
+    -- Check if entry exists before updating
+    local existingEntry = SpectrumLootHelperDB.playerData[key]
+    if not existingEntry then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Entry not found for update", {
+                key = key,
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion
+            })
+        end
+        return false, "Entry not found - cannot update non-existent entry"
+    end
+    
+    -- Validate update data structure
+    if not updateData or type(updateData) ~= "table" then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Invalid updateData for entry update", {
+                key = key,
+                updateData = updateData,
+                updateDataType = type(updateData)
+            })
+        end
+        return false, "Update data must be a non-empty table"
+    end
+    
+    -- Create a deep copy of existing entry for safe updates
+    local updatedEntry = {}
+    for field, value in pairs(existingEntry) do
+        if type(value) == "table" then
+            -- Deep copy tables (like Equipment)
+            updatedEntry[field] = {}
+            for k, v in pairs(value) do
+                updatedEntry[field][k] = v
+            end
+        else
+            updatedEntry[field] = value
+        end
+    end
+    
+    -- Track changed fields for logging
+    local changedFields = {}
+    
+    -- Apply updates to existing entry (partial updates supported)
+    if updateData.VenariiCharges ~= nil then
+        -- Validate VenariiCharges before applying
+        local chargesValid, chargesError = self:ValidateVenariiCharges(updateData.VenariiCharges)
+        if chargesValid then
+            local oldValue = updatedEntry.VenariiCharges
+            updatedEntry.VenariiCharges = updateData.VenariiCharges
+            table.insert(changedFields, {
+                field = "VenariiCharges",
+                oldValue = oldValue,
+                newValue = updateData.VenariiCharges
+            })
+            if SLH.Debug then
+                SLH.Debug:LogDebug("Database", "Updated VenariiCharges", {
+                    key = key,
+                    oldValue = oldValue,
+                    newValue = updateData.VenariiCharges
+                })
+            end
+        else
+            if SLH.Debug then
+                SLH.Debug:LogWarn("Database", "Invalid VenariiCharges update ignored", {
+                    key = key,
+                    charges = updateData.VenariiCharges,
+                    error = chargesError
+                })
+            end
+            return false, "VenariiCharges validation failed: " .. (chargesError or "unknown error")
+        end
+    end
+    
+    -- Apply Equipment updates (partial equipment updates supported)
+    if updateData.Equipment ~= nil then
+        -- Validate Equipment before applying
+        local equipmentValid, equipmentError = self:ValidateEquipment(updateData.Equipment)
+        if equipmentValid then
+            local oldEquipment = {}
+            for k, v in pairs(updatedEntry.Equipment) do
+                oldEquipment[k] = v
+            end
+            
+            -- Apply equipment slot updates (partial updates within Equipment)
+            for slotName, slotValue in pairs(updateData.Equipment) do
+                if updatedEntry.Equipment[slotName] ~= nil then
+                    local oldValue = updatedEntry.Equipment[slotName]
+                    updatedEntry.Equipment[slotName] = slotValue
+                    table.insert(changedFields, {
+                        field = "Equipment." .. slotName,
+                        oldValue = oldValue,
+                        newValue = slotValue
+                    })
+                else
+                    if SLH.Debug then
+                        SLH.Debug:LogWarn("Database", "Unknown equipment slot ignored", {
+                            key = key,
+                            slotName = slotName,
+                            slotValue = slotValue
+                        })
+                    end
+                end
+            end
+            
+            if SLH.Debug then
+                SLH.Debug:LogDebug("Database", "Updated Equipment slots", {
+                    key = key,
+                    updatedSlots = {}
+                })
+            end
+            
+            -- Log updated slots for debugging
+            for _, change in ipairs(changedFields) do
+                if change.field:match("^Equipment%.") then
+                    if SLH.Debug then
+                        table.insert({}, change.field .. ": " .. tostring(change.oldValue) .. " -> " .. tostring(change.newValue))
+                    end
+                end
+            end
+        else
+            if SLH.Debug then
+                SLH.Debug:LogWarn("Database", "Invalid Equipment update ignored", {
+                    key = key,
+                    equipment = updateData.Equipment,
+                    error = equipmentError
+                })
+            end
+            return false, "Equipment validation failed: " .. (equipmentError or "unknown error")
+        end
+    end
+    
+    -- Check if any changes were actually made
+    if #changedFields == 0 then
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "No valid changes found in update data", {
+                key = key,
+                updateData = updateData
+            })
+        end
+        return false, "No valid changes to apply"
+    end
+    
+    -- Update LastUpdate timestamp
+    local oldTimestamp = updatedEntry.LastUpdate
+    updatedEntry.LastUpdate = time()
+    table.insert(changedFields, {
+        field = "LastUpdate",
+        oldValue = oldTimestamp,
+        newValue = updatedEntry.LastUpdate
+    })
+    
+    -- Validate updated entry before saving
+    local entryValid, entryError = self:ValidateEntry(updatedEntry)
+    if not entryValid then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Updated entry failed validation", {
+                key = key,
+                entry = updatedEntry,
+                error = entryError
+            })
+        end
+        return false, "Updated entry validation failed: " .. (entryError or "unknown error")
+    end
+    
+    -- Save changes to database
+    SpectrumLootHelperDB.playerData[key] = updatedEntry
+    
+    -- Log successful update with changed fields
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Successfully updated entry", {
+            key = key,
+            playerName = playerName,
+            serverName = serverName,
+            wowVersion = wowVersion,
+            changedFields = #changedFields,
+            changes = {}
+        })
+    end
+    
+    -- Log individual field changes for debugging
+    for _, change in ipairs(changedFields) do
+        if SLH.Debug then
+            table.insert({}, change.field .. ": " .. tostring(change.oldValue) .. " -> " .. tostring(change.newValue))
+        end
+    end
+    
+    return true, updatedEntry
 end
 
 -- Retrieve player entry from database

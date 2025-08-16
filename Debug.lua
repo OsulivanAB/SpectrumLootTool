@@ -11,7 +11,71 @@ SLH.Debug = {
 }
 
 -- Initialize the debug system
-function SLH.Debug:Init()
+function     -- Log the toggle action
+    self:SetEnabled(not self.enabled)
+end
+
+-- Internal helper function to serialize log data for file output
+function SLH.Debug:_SerializeLogData(data)
+    -- Convert log data table to readable string format
+    -- Handles nested tables, arrays, and various data types safely
+    
+    if data == nil then
+        return nil
+    end
+    
+    if type(data) ~= "table" then
+        return tostring(data)
+    end
+    
+    -- Use pcall to handle any serialization errors gracefully
+    local success, result = pcall(function()
+        local parts = {}
+        
+        -- Handle table serialization with depth limit to prevent infinite recursion
+        local function serializeValue(value, depth)
+            depth = depth or 0
+            if depth > 3 then -- Limit depth to prevent stack overflow
+                return "..."
+            end
+            
+            if type(value) == "table" then
+                local tableParts = {}
+                local count = 0
+                for k, v in pairs(value) do
+                    count = count + 1
+                    if count > 10 then -- Limit number of entries
+                        table.insert(tableParts, "...")
+                        break
+                    end
+                    local keyStr = type(k) == "string" and k or tostring(k)
+                    local valueStr = serializeValue(v, depth + 1)
+                    table.insert(tableParts, keyStr .. "=" .. valueStr)
+                end
+                return "{" .. table.concat(tableParts, ", ") .. "}"
+            elseif type(value) == "string" then
+                return "\"" .. value .. "\""
+            else
+                return tostring(value)
+            end
+        end
+        
+        for k, v in pairs(data) do
+            local keyStr = type(k) == "string" and k or tostring(k)
+            local valueStr = serializeValue(v)
+            table.insert(parts, keyStr .. "=" .. valueStr)
+        end
+        
+        return table.concat(parts, ", ")
+    end)
+    
+    if success then
+        return result
+    else
+        return "serialization_error"
+    end
+end
+Debug:Init()
     -- Ensure saved variables structure exists (SpectrumLootHelperDB is initialized in Core.lua)
     if SpectrumLootHelperDB then
         SpectrumLootHelperDB.debug = SpectrumLootHelperDB.debug or {}
@@ -267,12 +331,75 @@ end
 
 -- Write current log buffer to file
 function SLH.Debug:FlushToFile()
-    -- Placeholder for flushing log buffer to file
-    -- Will handle:
-    -- - Format log entries for file output
-    -- - Write/append to debug log file in addon directory
-    -- - Handle file I/O errors gracefully
-    -- - Maintain single session file (overwrite on new session)
+    -- Early exit if no logs to flush
+    if not self.logBuffer or #self.logBuffer == 0 then
+        return false, "No logs to flush"
+    end
+    
+    -- Early exit if logging is disabled (shouldn't have logs, but defensive programming)
+    if not self:IsEnabled() then
+        return false, "Debug logging is disabled"
+    end
+    
+    -- Note: WoW's Lua environment has severely limited file I/O capabilities
+    -- AddOns cannot directly write to arbitrary files due to security restrictions
+    -- However, we can use alternative approaches for log persistence:
+    
+    -- Approach 1: Use WoW's saved variables system for persistence
+    -- This data will be saved to SavedVariables automatically by WoW
+    local success, errorMsg = pcall(function()
+        -- Ensure saved variables structure exists
+        SpectrumLootHelperDB = SpectrumLootHelperDB or {}
+        SpectrumLootHelperDB.debugLogs = SpectrumLootHelperDB.debugLogs or {}
+        
+        -- Format logs for saved variables storage
+        local formattedLogs = {}
+        for i, entry in ipairs(self.logBuffer) do
+            local formattedEntry = string.format(
+                "[%s +%ds] %s/%s: %s",
+                date("%Y-%m-%d %H:%M:%S", entry.timestamp),
+                entry.sessionTime,
+                entry.level,
+                entry.component,
+                entry.message
+            )
+            
+            -- Add data context if present
+            if entry.data then
+                local dataStr = self:_SerializeLogData(entry.data)
+                if dataStr then
+                    formattedEntry = formattedEntry .. " | Data: " .. dataStr
+                end
+            end
+            
+            table.insert(formattedLogs, formattedEntry)
+        end
+        
+        -- Store formatted logs with session metadata
+        SpectrumLootHelperDB.debugLogs = {
+            sessionStart = self.sessionStartTime,
+            lastFlush = GetServerTime(),
+            wowVersion = GetBuildInfo(),
+            addonVersion = SLH.version or "unknown",
+            logCount = #formattedLogs,
+            logs = formattedLogs
+        }
+    end)
+    
+    if not success then
+        -- Log the flush error (but avoid infinite recursion)
+        print("|cFFFF0000[Spectrum Loot Helper]|r Failed to flush debug logs: " .. (errorMsg or "unknown error"))
+        return false, errorMsg or "Flush operation failed"
+    end
+    
+    -- Log successful flush operation
+    self:LogInfo("Debug", "Debug logs flushed to saved variables", {
+        logCount = #self.logBuffer,
+        flushTime = GetServerTime(),
+        method = "saved_variables"
+    })
+    
+    return true, "Logs successfully flushed to saved variables"
 end
 
 -- Get debug log file path and status

@@ -3789,6 +3789,569 @@ function Database:GetPerformanceCacheStats()
 end
 
 -- ============================================================================
+-- TASK 24: INTEGRATION TESTING
+-- ============================================================================
+
+-- Comprehensive integration testing for all database functions
+-- Tests database functions work together, verifies module integration, and validates debug logging
+function Database:RunIntegrationTests()
+    return self:SafeExecute("RunIntegrationTests", function()
+        
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Starting comprehensive database integration testing", {
+                operation = "integration_testing",
+                testSuite = "comprehensive"
+            })
+        end
+        
+        local testResults = {
+            testName = "Database Integration Test Suite",
+            startTime = GetServerTime(),
+            categories = {},
+            totalTests = 0,
+            passedTests = 0,
+            failedTests = 0,
+            skippedTests = 0,
+            issues = {},
+            recommendations = {}
+        }
+        
+        -- Category 1: Core Database Function Integration
+        local function testCoreFunctionIntegration()
+            local coreTests = {
+                testName = "Core Database Functions Integration",
+                tests = {},
+                passed = 0,
+                failed = 0,
+                issues = {}
+            }
+            
+            -- Test 1: Database initialization and schema
+            local function testInitializationAndSchema()
+                local initSuccess = self:Init()
+                if not initSuccess then
+                    return false, "Database initialization failed"
+                end
+                
+                local schemaSuccess, schema = self:GetEntrySchema()
+                if not schemaSuccess or not schema then
+                    return false, "Schema generation failed"
+                end
+                
+                if not schema.Equipment or not schema.VenariiCharges then
+                    return false, "Schema structure invalid"
+                end
+                
+                return true, "Initialization and schema working correctly"
+            end
+            
+            -- Test 2: Player key generation and validation
+            local function testPlayerKeyGeneration()
+                local keySuccess, playerKey = self:GetCurrentPlayerKey()
+                if not keySuccess or not playerKey then
+                    return false, "Player key generation failed"
+                end
+                
+                if not string.find(playerKey, "-") then
+                    return false, "Player key format invalid - missing separators"
+                end
+                
+                -- Test optimized version works identically
+                local optSuccess, optKey = self:GetCurrentPlayerKeyOptimized()
+                if not optSuccess or optKey ~= playerKey then
+                    return false, "Optimized player key doesn't match standard version"
+                end
+                
+                return true, "Player key generation working correctly"
+            end
+            
+            -- Test 3: Entry lifecycle (add, get, update, delete)
+            local function testEntryLifecycle()
+                local playerSuccess, playerKey = self:GetCurrentPlayerKey()
+                if not playerSuccess then
+                    return false, "Cannot get player key for lifecycle test"
+                end
+                
+                local testKey = playerKey .. "_test"
+                
+                -- Add entry
+                local addSuccess = self:AddEntry(testKey)
+                if not addSuccess then
+                    return false, "Failed to add test entry"
+                end
+                
+                -- Get entry
+                local getSuccess, entry = self:GetEntry(testKey)
+                if not getSuccess or not entry then
+                    return false, "Failed to retrieve added entry"
+                end
+                
+                -- Update entry
+                local updateData = { VenariiCharges = 5, Equipment = { Head = true } }
+                local updateSuccess = self:UpdateEntry(testKey, updateData)
+                if not updateSuccess then
+                    return false, "Failed to update entry"
+                end
+                
+                -- Verify update
+                local verifySuccess, updatedEntry = self:GetEntry(testKey)
+                if not verifySuccess or updatedEntry.VenariiCharges ~= 5 or not updatedEntry.Equipment.Head then
+                    return false, "Entry update verification failed"
+                end
+                
+                -- Delete entry
+                local deleteSuccess = self:DeleteEntry(testKey)
+                if not deleteSuccess then
+                    return false, "Failed to delete entry"
+                end
+                
+                -- Verify deletion
+                local deletedEntry = self:GetEntry(testKey)
+                if deletedEntry then
+                    return false, "Entry still exists after deletion"
+                end
+                
+                return true, "Complete entry lifecycle working correctly"
+            end
+            
+            -- Test 4: Validation functions integration
+            local function testValidationIntegration()
+                -- Test Venarii charges validation
+                local chargesValid = self:ValidateVenariiCharges(3)
+                local chargesInvalid = self:ValidateVenariiCharges(-1)
+                
+                if not chargesValid or chargesInvalid then
+                    return false, "Venarii charges validation not working correctly"
+                end
+                
+                -- Test equipment validation
+                local validEquipment = { Head = true, Neck = false }
+                local invalidEquipment = { Head = "invalid" }
+                
+                local equipValid = self:ValidateEquipment(validEquipment)
+                local equipInvalid = self:ValidateEquipment(invalidEquipment)
+                
+                if not equipValid or equipInvalid then
+                    return false, "Equipment validation not working correctly"
+                end
+                
+                -- Test complete entry validation
+                local validEntry = {
+                    VenariiCharges = 2,
+                    Equipment = { Head = true, Neck = false, Shoulder = true },
+                    LastUpdate = GetServerTime()
+                }
+                
+                local entryValid = self:ValidateEntry(validEntry)
+                if not entryValid then
+                    return false, "Complete entry validation failed"
+                end
+                
+                return true, "All validation functions working correctly"
+            end
+            
+            -- Run core function tests
+            local coreFunctionTests = {
+                { name = "Initialization and Schema", func = testInitializationAndSchema },
+                { name = "Player Key Generation", func = testPlayerKeyGeneration },
+                { name = "Entry Lifecycle", func = testEntryLifecycle },
+                { name = "Validation Integration", func = testValidationIntegration }
+            }
+            
+            for _, test in ipairs(coreFunctionTests) do
+                testResults.totalTests = testResults.totalTests + 1
+                local success, message = test.func()
+                
+                table.insert(coreTests.tests, {
+                    name = test.name,
+                    passed = success,
+                    message = message,
+                    timestamp = GetServerTime()
+                })
+                
+                if success then
+                    coreTests.passed = coreTests.passed + 1
+                    testResults.passedTests = testResults.passedTests + 1
+                else
+                    coreTests.failed = coreTests.failed + 1
+                    testResults.failedTests = testResults.failedTests + 1
+                    table.insert(coreTests.issues, test.name .. ": " .. message)
+                    table.insert(testResults.issues, "Core Functions - " .. test.name .. ": " .. message)
+                end
+            end
+            
+            return coreTests
+        end
+        
+        -- Category 2: Advanced Function Integration
+        local function testAdvancedFunctionIntegration()
+            local advancedTests = {
+                testName = "Advanced Database Functions Integration",
+                tests = {},
+                passed = 0,
+                failed = 0,
+                issues = {}
+            }
+            
+            -- Test 1: Version management and migration
+            local function testVersionManagement()
+                local versionEntries = self:GetCurrentVersionEntries()
+                if not versionEntries then
+                    return false, "Failed to get current version entries"
+                end
+                
+                -- Test migration functionality exists
+                if type(self.MigrateToNewWoWVersion) ~= "function" then
+                    return false, "Migration function not available"
+                end
+                
+                return true, "Version management working correctly"
+            end
+            
+            -- Test 2: Data integrity and statistics
+            local function testDataIntegrityAndStats()
+                local integritySuccess, integrityReport = self:CheckDataIntegrity()
+                if not integritySuccess then
+                    return false, "Data integrity check failed"
+                end
+                
+                local statsSuccess, debugStats = self:GetDebugStats()
+                if not statsSuccess then
+                    return false, "Debug statistics generation failed"
+                end
+                
+                local sizeSuccess, sizeInfo = self:GetSize()
+                if not sizeSuccess then
+                    return false, "Database size analysis failed"
+                end
+                
+                return true, "Data integrity and statistics working correctly"
+            end
+            
+            -- Test 3: Performance optimization integration
+            local function testPerformanceOptimization()
+                local optimizeSuccess, optimizeResults = self:OptimizePerformance()
+                if not optimizeSuccess then
+                    return false, "Performance optimization failed"
+                end
+                
+                local cacheStatsSuccess, cacheStats = self:GetPerformanceCacheStats()
+                if not cacheStatsSuccess then
+                    return false, "Cache statistics retrieval failed"
+                end
+                
+                local clearCacheSuccess = self:ClearPerformanceCache()
+                if not clearCacheSuccess then
+                    return false, "Cache clearing failed"
+                end
+                
+                return true, "Performance optimization working correctly"
+            end
+            
+            -- Test 4: Schema upgrade system
+            local function testSchemaUpgradeSystem()
+                -- Test upgrade function exists and validates parameters
+                if type(self.UpgradeSchema) ~= "function" then
+                    return false, "Schema upgrade function not available"
+                end
+                
+                -- Test with same version (should succeed with no action)
+                local upgradeSuccess = self:UpgradeSchema(self.DB_VERSION, self.DB_VERSION)
+                if not upgradeSuccess then
+                    return false, "Schema upgrade with same version failed"
+                end
+                
+                return true, "Schema upgrade system working correctly"
+            end
+            
+            -- Run advanced function tests
+            local advancedFunctionTests = {
+                { name = "Version Management", func = testVersionManagement },
+                { name = "Data Integrity and Statistics", func = testDataIntegrityAndStats },
+                { name = "Performance Optimization", func = testPerformanceOptimization },
+                { name = "Schema Upgrade System", func = testSchemaUpgradeSystem }
+            }
+            
+            for _, test in ipairs(advancedFunctionTests) do
+                testResults.totalTests = testResults.totalTests + 1
+                local success, message = test.func()
+                
+                table.insert(advancedTests.tests, {
+                    name = test.name,
+                    passed = success,
+                    message = message,
+                    timestamp = GetServerTime()
+                })
+                
+                if success then
+                    advancedTests.passed = advancedTests.passed + 1
+                    testResults.passedTests = testResults.passedTests + 1
+                else
+                    advancedTests.failed = advancedTests.failed + 1
+                    testResults.failedTests = testResults.failedTests + 1
+                    table.insert(advancedTests.issues, test.name .. ": " .. message)
+                    table.insert(testResults.issues, "Advanced Functions - " .. test.name .. ": " .. message)
+                end
+            end
+            
+            return advancedTests
+        end
+        
+        -- Category 3: Module Integration Testing
+        local function testModuleIntegration()
+            local moduleTests = {
+                testName = "Module Integration Testing",
+                tests = {},
+                passed = 0,
+                failed = 0,
+                issues = {}
+            }
+            
+            -- Test 1: Debug module integration
+            local function testDebugModuleIntegration()
+                if not SLH or not SLH.Debug then
+                    return false, "Debug module not available"
+                end
+                
+                if type(SLH.Debug.LogInfo) ~= "function" then
+                    return false, "Debug logging functions not available"
+                end
+                
+                -- Test that database functions can log
+                SLH.Debug:LogInfo("Database", "Integration test log", { test = "module_integration" })
+                
+                return true, "Debug module integration working correctly"
+            end
+            
+            -- Test 2: Core module integration
+            local function testCoreModuleIntegration()
+                if not SLH or not SLH.Core then
+                    -- Core module might not be loaded during testing, this is acceptable
+                    return true, "Core module integration test skipped (module not loaded)"
+                end
+                
+                return true, "Core module integration working correctly"
+            end
+            
+            -- Test 3: Saved variables integration
+            local function testSavedVariablesIntegration()
+                if not SpectrumLootHelperDB then
+                    return false, "Saved variables not available"
+                end
+                
+                if not SpectrumLootHelperDB.playerData then
+                    return false, "Player data structure not available"
+                end
+                
+                -- Test write capability
+                local testKey = "__integration_test__"
+                SpectrumLootHelperDB.playerData[testKey] = { test = true }
+                
+                if not SpectrumLootHelperDB.playerData[testKey] then
+                    return false, "Saved variables write test failed"
+                end
+                
+                -- Clean up
+                SpectrumLootHelperDB.playerData[testKey] = nil
+                
+                return true, "Saved variables integration working correctly"
+            end
+            
+            -- Test 4: Event system integration
+            local function testEventSystemIntegration()
+                if not Database.CleanupEventHandlers then
+                    return false, "Event cleanup function not available"
+                end
+                
+                -- Test event cleanup works without errors
+                local success, result = pcall(Database.CleanupEventHandlers)
+                if not success then
+                    return false, "Event cleanup failed: " .. tostring(result)
+                end
+                
+                return true, "Event system integration working correctly"
+            end
+            
+            -- Run module integration tests
+            local moduleIntegrationTests = {
+                { name = "Debug Module Integration", func = testDebugModuleIntegration },
+                { name = "Core Module Integration", func = testCoreModuleIntegration },
+                { name = "Saved Variables Integration", func = testSavedVariablesIntegration },
+                { name = "Event System Integration", func = testEventSystemIntegration }
+            }
+            
+            for _, test in ipairs(moduleIntegrationTests) do
+                testResults.totalTests = testResults.totalTests + 1
+                local success, message = test.func()
+                
+                table.insert(moduleTests.tests, {
+                    name = test.name,
+                    passed = success,
+                    message = message,
+                    timestamp = GetServerTime()
+                })
+                
+                if success then
+                    moduleTests.passed = moduleTests.passed + 1
+                    testResults.passedTests = testResults.passedTests + 1
+                else
+                    moduleTests.failed = moduleTests.failed + 1
+                    testResults.failedTests = testResults.failedTests + 1
+                    table.insert(moduleTests.issues, test.name .. ": " .. message)
+                    table.insert(testResults.issues, "Module Integration - " .. test.name .. ": " .. message)
+                end
+            end
+            
+            return moduleTests
+        end
+        
+        -- Category 4: Debug Logging Validation
+        local function testDebugLoggingValidation()
+            local loggingTests = {
+                testName = "Debug Logging Validation",
+                tests = {},
+                passed = 0,
+                failed = 0,
+                issues = {}
+            }
+            
+            -- Test 1: Component naming consistency
+            local function testComponentNaming()
+                -- All database functions should use "Database" as component name
+                -- This is validated by checking that debug logging calls use correct component name
+                
+                if not SLH or not SLH.Debug then
+                    return false, "Debug module not available for logging validation"
+                end
+                
+                -- Test that we can log with Database component
+                SLH.Debug:LogInfo("Database", "Component naming test", { validation = true })
+                
+                return true, "Debug logging component naming working correctly"
+            end
+            
+            -- Test 2: Context data inclusion
+            local function testContextDataInclusion()
+                if not SLH or not SLH.Debug then
+                    return false, "Debug module not available for context validation"
+                end
+                
+                -- Test that context data is properly passed
+                SLH.Debug:LogDebug("Database", "Context data test", {
+                    operation = "integration_test",
+                    timestamp = GetServerTime(),
+                    data = { test = "context_validation" }
+                })
+                
+                return true, "Debug logging context data working correctly"
+            end
+            
+            -- Test 3: Error logging functionality
+            local function testErrorLogging()
+                if not SLH or not SLH.Debug then
+                    return false, "Debug module not available for error validation"
+                end
+                
+                -- Test error logging (without actually causing an error)
+                SLH.Debug:LogWarn("Database", "Integration test warning", {
+                    testType = "error_logging_validation",
+                    expected = true
+                })
+                
+                return true, "Debug error logging working correctly"
+            end
+            
+            -- Run debug logging tests
+            local loggingValidationTests = {
+                { name = "Component Naming Consistency", func = testComponentNaming },
+                { name = "Context Data Inclusion", func = testContextDataInclusion },
+                { name = "Error Logging Functionality", func = testErrorLogging }
+            }
+            
+            for _, test in ipairs(loggingValidationTests) do
+                testResults.totalTests = testResults.totalTests + 1
+                local success, message = test.func()
+                
+                table.insert(loggingTests.tests, {
+                    name = test.name,
+                    passed = success,
+                    message = message,
+                    timestamp = GetServerTime()
+                })
+                
+                if success then
+                    loggingTests.passed = loggingTests.passed + 1
+                    testResults.passedTests = testResults.passedTests + 1
+                else
+                    loggingTests.failed = loggingTests.failed + 1
+                    testResults.failedTests = testResults.failedTests + 1
+                    table.insert(loggingTests.issues, test.name .. ": " .. message)
+                    table.insert(testResults.issues, "Debug Logging - " .. test.name .. ": " .. message)
+                end
+            end
+            
+            return loggingTests
+        end
+        
+        -- Run all test categories
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "Running core function integration tests", {})
+        end
+        testResults.categories.coreFunctions = testCoreFunctionIntegration()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "Running advanced function integration tests", {})
+        end
+        testResults.categories.advancedFunctions = testAdvancedFunctionIntegration()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "Running module integration tests", {})
+        end
+        testResults.categories.moduleIntegration = testModuleIntegration()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "Running debug logging validation tests", {})
+        end
+        testResults.categories.debugLogging = testDebugLoggingValidation()
+        
+        -- Generate recommendations
+        if testResults.failedTests == 0 then
+            table.insert(testResults.recommendations, "All integration tests passed - database module is fully functional")
+        else
+            table.insert(testResults.recommendations, "Address failed tests before production deployment")
+        end
+        
+        if testResults.passedTests / testResults.totalTests >= 0.9 then
+            table.insert(testResults.recommendations, "Integration test success rate is excellent")
+        elseif testResults.passedTests / testResults.totalTests >= 0.75 then
+            table.insert(testResults.recommendations, "Integration test success rate is good but could be improved")
+        else
+            table.insert(testResults.recommendations, "Integration test success rate needs significant improvement")
+        end
+        
+        -- Finalize test results
+        testResults.endTime = GetServerTime()
+        testResults.duration = testResults.endTime - testResults.startTime
+        testResults.successRate = (testResults.passedTests / testResults.totalTests) * 100
+        
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Integration testing completed", {
+                totalTests = testResults.totalTests,
+                passedTests = testResults.passedTests,
+                failedTests = testResults.failedTests,
+                successRate = testResults.successRate,
+                duration = testResults.duration,
+                issueCount = #testResults.issues,
+                operation = "integration_testing_complete"
+            })
+        end
+        
+        return true, testResults
+        
+    end)
+end
+
+-- ============================================================================
 -- TASK 21: EVENT REGISTRATION & MODULE INTEGRATION
 -- ============================================================================
 

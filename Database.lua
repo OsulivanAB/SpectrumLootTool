@@ -1005,7 +1005,9 @@ function Database:_GetEntryInternal(playerName, serverName, wowVersion)
     return entry
 end
 
--- TODO: Delete player entry from database
+-- Delete player entry from database
+-- Checks existence before deletion, cleans up related data, and returns success/failure status
+-- Provides comprehensive logging for deletion attempts and results
 function Database:DeleteEntry(playerName, serverName, wowVersion)
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "DeleteEntry() called", {
@@ -1015,11 +1017,143 @@ function Database:DeleteEntry(playerName, serverName, wowVersion)
         })
     end
     
-    -- TODO: Generate key for deletion
-    -- TODO: Check if entry exists before deletion
-    -- TODO: Remove entry from database
-    -- TODO: Log successful deletion
-    -- TODO: Return success/failure status
+    -- Wrap entry deletion in error handling
+    local success, result, deletedEntry = SafeExecute(function()
+        return Database:_DeleteEntryInternal(playerName, serverName, wowVersion)
+    end, "DeleteEntry")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry deletion failed", {
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion,
+                error = result
+            })
+        end
+        return false, result
+    end
+    
+    return result, deletedEntry
+end
+
+-- Internal entry deletion logic (separated for error handling)
+function Database:_DeleteEntryInternal(playerName, serverName, wowVersion)
+    
+    -- Generate key for deletion
+    local key = self:GenerateKey(playerName, serverName, wowVersion)
+    if not key then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Failed to generate key for entry deletion", {
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion
+            })
+        end
+        return false, "Failed to generate player key"
+    end
+    
+    -- Check if database structures exist
+    if not SpectrumLootHelperDB then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "SpectrumLootHelperDB not available for DeleteEntry", {})
+        end
+        return false, "Database not initialized"
+    end
+    
+    if not SpectrumLootHelperDB.playerData then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "playerData table not available for DeleteEntry", {})
+        end
+        return false, "Player data table not initialized"
+    end
+    
+    -- Check if entry exists before deletion
+    local existingEntry = SpectrumLootHelperDB.playerData[key]
+    if not existingEntry then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Entry not found for deletion", {
+                key = key,
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion,
+                found = false
+            })
+        end
+        return false, "Entry not found - cannot delete non-existent entry"
+    end
+    
+    -- Create a backup copy of entry before deletion for logging and potential recovery
+    local deletedEntryBackup = {}
+    if type(existingEntry) == "table" then
+        for field, value in pairs(existingEntry) do
+            if type(value) == "table" then
+                -- Deep copy tables (like Equipment)
+                deletedEntryBackup[field] = {}
+                for k, v in pairs(value) do
+                    deletedEntryBackup[field][k] = v
+                end
+            else
+                deletedEntryBackup[field] = value
+            end
+        end
+    end
+    
+    -- Count total entries before deletion for logging
+    local totalEntriesBefore = 0
+    for _ in pairs(SpectrumLootHelperDB.playerData) do
+        totalEntriesBefore = totalEntriesBefore + 1
+    end
+    
+    -- Remove entry from database (clean up related data)
+    SpectrumLootHelperDB.playerData[key] = nil
+    
+    -- Verify deletion was successful
+    if SpectrumLootHelperDB.playerData[key] ~= nil then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry deletion verification failed", {
+                key = key,
+                entryStillExists = true
+            })
+        end
+        return false, "Entry deletion failed - entry still exists after removal"
+    end
+    
+    -- Count total entries after deletion for logging
+    local totalEntriesAfter = 0
+    for _ in pairs(SpectrumLootHelperDB.playerData) do
+        totalEntriesAfter = totalEntriesAfter + 1
+    end
+    
+    -- Log successful deletion with comprehensive details
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Successfully deleted entry from database", {
+            key = key,
+            playerName = playerName,
+            serverName = serverName,
+            wowVersion = wowVersion,
+            deletedEntry = {
+                hadVenariiCharges = deletedEntryBackup.VenariiCharges ~= nil,
+                hadEquipment = deletedEntryBackup.Equipment ~= nil,
+                hadLastUpdate = deletedEntryBackup.LastUpdate ~= nil,
+                venariiCharges = deletedEntryBackup.VenariiCharges,
+                lastUpdate = deletedEntryBackup.LastUpdate
+            },
+            databaseStats = {
+                entriesBeforeDeletion = totalEntriesBefore,
+                entriesAfterDeletion = totalEntriesAfter,
+                entriesRemoved = totalEntriesBefore - totalEntriesAfter
+            },
+            deletionSuccessful = true
+        })
+    end
+    
+    -- Additional cleanup: Check for any related data that might need cleanup
+    -- Note: Currently, entries are self-contained, but this is where we would
+    -- clean up any cross-references or related data in the future
+    
+    -- Return success/failure status with deleted entry data
+    return true, deletedEntryBackup
 end
 
 -- TODO: Get all entries for current WoW version

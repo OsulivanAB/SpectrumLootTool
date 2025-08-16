@@ -136,8 +136,8 @@ end
 
 -- Adjust a player's roll count and record the change
 function SLH:AdjustRoll(playerName, delta, officer)
-    local current = self.db.rolls[playerName] or 0
-    local newValue = math.max(0, current + delta)
+    local oldValue = self.db.rolls[playerName] or 0
+    local newValue = math.max(0, oldValue + delta)
     self.db.rolls[playerName] = newValue
     
     -- Get current WoW version for tracking
@@ -156,14 +156,16 @@ function SLH:AdjustRoll(playerName, delta, officer)
         wowVersion = result
     end
     
-    -- Create unique log entry with timestamp, officer info, and WoW version
+    -- Create unique log entry with new standardized format
+    local timestamp = GetServerTime()
     local logEntry = {
-        time = GetServerTime(),
-        player = playerName,
-        officer = officer,
-        value = newValue,
+        logEntryID = string.format("%d_%s_%s", timestamp, playerName, officer), -- Unique ID
+        timestamp = timestamp,
+        playerName = playerName,
+        officerName = officer,
+        oldValue = oldValue, -- Previous value
+        newValue = newValue,
         wowVersion = wowVersion, -- Track WoW version for filtering
-        id = string.format("%d_%s_%s_%d", GetServerTime(), playerName, officer, newValue), -- Unique ID with value
     }
     table.insert(self.db.log, logEntry)
 

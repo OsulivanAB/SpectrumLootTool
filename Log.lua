@@ -142,6 +142,22 @@ function SLH.Log:OnVersionChanged(oldVersion, newVersion)
     -- - Roll count resets (if major.minor version changed)
 end
 
+-- Generate a unique log entry ID by hashing timestamp, player name, and officer name
+function SLH.Log:GenerateLogEntryID(timestamp, playerName, officerName)
+    -- Placeholder for log entry ID generation
+    -- Will create a unique ID by hashing:
+    -- - timestamp: Server timestamp when the change occurred
+    -- - playerName: Name of the player whose roll count changed
+    -- - officerName: Name of the officer who made the change
+    
+    -- Implementation will use a hash function (like MD5 or simple string concatenation)
+    -- to create a unique identifier for deduplication in sync operations
+    -- Format example: "1692147600_PlayerName_OfficerName" or hash equivalent
+    
+    -- For now, return a simple concatenation format
+    return string.format("%d_%s_%s", timestamp, playerName, officerName)
+end
+
 -- Add a new log entry for roll count changes
 function SLH.Log:AddEntry(playerName, officerName, newValue, oldValue)
     -- Placeholder for adding log entries
@@ -149,15 +165,27 @@ function SLH.Log:AddEntry(playerName, officerName, newValue, oldValue)
     -- - playerName: The player whose roll count changed
     -- - officerName: The officer who made the change
     -- - newValue: The new roll count value
-    -- - oldValue: The previous roll count value (optional, for better tracking)
+    -- - oldValue: The previous roll count value (for tracking changes)
     
     -- Will create log entry with:
-    -- - Timestamp (server time)
-    -- - Player name
-    -- - Officer who made the change
-    -- - New value
-    -- - WoW version for filtering
-    -- - Unique ID for sync deduplication
+    -- - logEntryID: Unique identifier (generated from timestamp + playerName + officerName)
+    -- - timestamp: Server time when change occurred
+    -- - playerName: Name of player whose roll count changed
+    -- - officerName: Name of officer who made the change
+    -- - oldValue: Previous roll count value
+    -- - newValue: New roll count value
+    -- - wowVersion: Current WoW major.minor version for filtering
+    
+    -- Example log entry structure:
+    -- {
+    --     logEntryID = "1692147600_PlayerName_OfficerName",
+    --     timestamp = 1692147600,
+    --     playerName = "PlayerName",
+    --     officerName = "OfficerName", 
+    --     oldValue = 5,
+    --     newValue = 6,
+    --     wowVersion = "10.2"
+    -- }
 end
 
 -- Get log entries for a specific player
@@ -167,7 +195,19 @@ function SLH.Log:GetPlayerEntries(playerName, wowVersion)
     -- - playerName: Player to get entries for
     -- - wowVersion: Optional WoW version filter (defaults to current)
     
-    -- Will return filtered array of log entries
+    -- Will return filtered array of log entries matching:
+    -- - playerName matches the specified player
+    -- - wowVersion matches (if specified, otherwise current version)
+    
+    -- Each returned log entry will contain:
+    -- - logEntryID: Unique identifier
+    -- - timestamp: Server time when change occurred
+    -- - playerName: Name of player whose roll count changed
+    -- - officerName: Name of officer who made the change
+    -- - oldValue: Previous roll count value
+    -- - newValue: New roll count value
+    -- - wowVersion: WoW major.minor version
+    
     return {}
 end
 
@@ -175,6 +215,16 @@ end
 function SLH.Log:GetCurrentVersionEntries()
     -- Placeholder for getting all relevant log entries
     -- Will filter by current WoW major.minor version
+    
+    -- Each returned log entry will contain:
+    -- - logEntryID: Unique identifier
+    -- - timestamp: Server time when change occurred
+    -- - playerName: Name of player whose roll count changed
+    -- - officerName: Name of officer who made the change
+    -- - oldValue: Previous roll count value
+    -- - newValue: New roll count value
+    -- - wowVersion: WoW major.minor version (matching current)
+    
     return {}
 end
 
@@ -184,15 +234,37 @@ function SLH.Log:CleanupOldEntries(retentionDays)
     -- Parameters:
     -- - retentionDays: Number of days to retain logs (optional, defaults to config)
     
-    -- Will remove:
-    -- - Entries older than retention period
-    -- - Entries from different WoW major.minor versions (optional)
+    -- Will remove log entries based on:
+    -- - Age: Entries older than retention period (based on timestamp)
+    -- - Version: Entries from different WoW major.minor versions (optional)
+    
+    -- Each processed log entry contains:
+    -- - logEntryID: Unique identifier
+    -- - timestamp: Server time when change occurred (used for age calculation)
+    -- - playerName: Name of player whose roll count changed
+    -- - officerName: Name of officer who made the change
+    -- - oldValue: Previous roll count value
+    -- - newValue: New roll count value
+    -- - wowVersion: WoW major.minor version (used for version filtering)
+    
+    -- Will return cleanup statistics:
+    -- { removedCount = 0, remainingCount = 0, oldestRemaining = timestamp }
 end
 
 -- Validate log entry structure
 function SLH.Log:ValidateEntry(entry)
     -- Placeholder for log entry validation
-    -- Will check required fields and data types
+    -- Will check required fields and data types for:
+    -- - logEntryID: string, non-empty, unique identifier
+    -- - timestamp: number, positive integer (server time)
+    -- - playerName: string, non-empty player name
+    -- - officerName: string, non-empty officer name
+    -- - oldValue: number, non-negative integer (previous roll count)
+    -- - newValue: number, non-negative integer (new roll count)
+    -- - wowVersion: string, major.minor format (e.g., "10.2")
+    
+    -- Will return true if entry is valid, false otherwise
+    -- May also return error message for debugging
     return false
 end
 
@@ -253,6 +325,19 @@ end
 function SLH.Log:Export(wowVersion)
     -- Placeholder for log data export
     -- Will serialize log entries for sharing/sync
+    -- Parameters:
+    -- - wowVersion: Optional WoW version filter (defaults to current)
+    
+    -- Will return array of log entries, each containing:
+    -- - logEntryID: Unique identifier
+    -- - timestamp: Server time when change occurred
+    -- - playerName: Name of player whose roll count changed
+    -- - officerName: Name of officer who made the change
+    -- - oldValue: Previous roll count value
+    -- - newValue: New roll count value
+    -- - wowVersion: WoW major.minor version
+    
+    -- Format will be suitable for network transmission and sync operations
     return {}
 end
 
@@ -260,14 +345,23 @@ end
 function SLH.Log:Import(data, source)
     -- Placeholder for log data import
     -- Parameters:
-    -- - data: Serialized log entries
+    -- - data: Serialized log entries from another player
     -- - source: Source player/system for conflict resolution
     
+    -- Will handle import of log entries, each containing:
+    -- - logEntryID: Unique identifier (for deduplication)
+    -- - timestamp: Server time when change occurred
+    -- - playerName: Name of player whose roll count changed
+    -- - officerName: Name of officer who made the change
+    -- - oldValue: Previous roll count value
+    -- - newValue: New roll count value
+    -- - wowVersion: WoW major.minor version
+    
     -- Will handle:
-    -- - Data validation
-    -- - Duplicate detection
-    -- - Conflict resolution
-    -- - Merge with existing log
+    -- - Data validation using ValidateEntry()
+    -- - Duplicate detection using logEntryID
+    -- - Conflict resolution (timestamp-based)
+    -- - Merge with existing log entries
 end
 
 -- Recalculate roll counts from log history
@@ -275,5 +369,20 @@ function SLH.Log:RecalculateRollCounts(wowVersion)
     -- Placeholder for recalculating roll counts from log
     -- Will process all log entries to rebuild current roll count state
     -- This ensures data consistency and supports offline changes
+    
+    -- Parameters:
+    -- - wowVersion: Optional WoW version filter (defaults to current)
+    
+    -- Will process log entries containing:
+    -- - logEntryID: Unique identifier (for ordering/deduplication)
+    -- - timestamp: Server time (for chronological ordering)
+    -- - playerName: Name of player whose roll count changed
+    -- - officerName: Name of officer who made the change
+    -- - oldValue: Previous roll count value (for validation)
+    -- - newValue: New roll count value (final result)
+    -- - wowVersion: WoW major.minor version (for filtering)
+    
+    -- Will return table of current roll counts by player name:
+    -- { ["PlayerName"] = currentRollCount, ... }
     return {}
 end

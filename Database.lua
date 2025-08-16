@@ -415,7 +415,9 @@ end
 -- DATA ACCESS METHODS
 -- ============================================================================
 
--- TODO: Add new player entry to database
+-- Add new player entry to database
+-- Checks for duplicates, applies schema template, validates, and saves
+-- Returns success status and entry key or error message
 function Database:AddEntry(playerName, serverName, wowVersion, initialData)
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "AddEntry() called", {
@@ -426,14 +428,193 @@ function Database:AddEntry(playerName, serverName, wowVersion, initialData)
         })
     end
     
-    -- TODO: Generate key using GenerateKey()
-    -- TODO: Check if entry already exists
-    -- TODO: Create new entry using schema template
-    -- TODO: Apply initial data if provided
-    -- TODO: Set LastUpdate timestamp
-    -- TODO: Validate entry before saving
-    -- TODO: Save to SpectrumLootHelperDB.playerData
-    -- TODO: Log successful addition
+    -- Wrap entry addition in error handling
+    local success, result, key = SafeExecute(function()
+        return Database:_AddEntryInternal(playerName, serverName, wowVersion, initialData)
+    end, "AddEntry")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry addition failed", {
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion,
+                error = result
+            })
+        end
+        return false, result
+    end
+    
+    return result, key
+end
+
+-- Internal entry addition logic (separated for error handling)
+function Database:_AddEntryInternal(playerName, serverName, wowVersion, initialData)
+    
+    -- Generate key using GenerateKey()
+    local key = self:GenerateKey(playerName, serverName, wowVersion)
+    if not key then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Failed to generate key for new entry", {
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion
+            })
+        end
+        return false, "Failed to generate player key"
+    end
+    
+    -- Check if entry already exists (duplicate check)
+    if not SpectrumLootHelperDB then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "SpectrumLootHelperDB not available for AddEntry", {})
+        end
+        return false, "Database not initialized"
+    end
+    
+    if not SpectrumLootHelperDB.playerData then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "playerData table not available for AddEntry", {})
+        end
+        return false, "Player data table not initialized"
+    end
+    
+    if SpectrumLootHelperDB.playerData[key] then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Entry already exists - duplicate detected", {
+                key = key,
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion
+            })
+        end
+        return false, "Entry already exists for this player"
+    end
+    
+    -- Create new entry using schema template
+    local newEntry = self:GetEntrySchema()
+    if not newEntry then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Failed to get entry schema for new entry", {
+                key = key
+            })
+        end
+        return false, "Failed to create entry schema"
+    end
+    
+    -- Apply initial data if provided
+    if initialData and type(initialData) == "table" then
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "Applying initial data to new entry", {
+                key = key,
+                initialDataKeys = {}
+            })
+        end
+        
+        -- Log initial data keys for debugging
+        for k, _ in pairs(initialData) do
+            table.insert(SLH.Debug and {} or {}, k)
+        end
+        
+        -- Apply VenariiCharges if provided
+        if initialData.VenariiCharges ~= nil then
+            local chargesValid, chargesError = self:ValidateVenariiCharges(initialData.VenariiCharges)
+            if chargesValid then
+                newEntry.VenariiCharges = initialData.VenariiCharges
+                if SLH.Debug then
+                    SLH.Debug:LogDebug("Database", "Applied initial VenariiCharges", {
+                        key = key,
+                        charges = initialData.VenariiCharges
+                    })
+                end
+            else
+                if SLH.Debug then
+                    SLH.Debug:LogWarn("Database", "Invalid initial VenariiCharges ignored", {
+                        key = key,
+                        charges = initialData.VenariiCharges,
+                        error = chargesError
+                    })
+                end
+            end
+        end
+        
+        -- Apply Equipment if provided
+        if initialData.Equipment ~= nil then
+            local equipmentValid, equipmentError = self:ValidateEquipment(initialData.Equipment)
+            if equipmentValid then
+                newEntry.Equipment = initialData.Equipment
+                if SLH.Debug then
+                    SLH.Debug:LogDebug("Database", "Applied initial Equipment data", {
+                        key = key,
+                        equipmentSlots = {}
+                    })
+                end
+                
+                -- Log applied equipment slots for debugging
+                for slotName, value in pairs(initialData.Equipment) do
+                    if SLH.Debug then
+                        table.insert({}, slotName .. "=" .. tostring(value))
+                    end
+                end
+            else
+                if SLH.Debug then
+                    SLH.Debug:LogWarn("Database", "Invalid initial Equipment ignored", {
+                        key = key,
+                        equipment = initialData.Equipment,
+                        error = equipmentError
+                    })
+                end
+            end
+        end
+    end
+    
+    -- Set LastUpdate timestamp (always current time for new entries)
+    newEntry.LastUpdate = time()
+    
+    -- Validate entry before saving
+    local entryValid, entryError = self:ValidateEntry(newEntry)
+    if not entryValid then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "New entry failed validation", {
+                key = key,
+                entry = newEntry,
+                error = entryError
+            })
+        end
+        return false, "Entry validation failed: " .. (entryError or "unknown error")
+    end
+    
+    -- Save to SpectrumLootHelperDB.playerData
+    SpectrumLootHelperDB.playerData[key] = newEntry
+    
+    -- Log successful addition
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Successfully added new entry", {
+            key = key,
+            playerName = playerName,
+            serverName = serverName,
+            wowVersion = wowVersion,
+            venariiCharges = newEntry.VenariiCharges,
+            lastUpdate = newEntry.LastUpdate,
+            hasInitialData = initialData ~= nil,
+            totalEntries = 0 -- Will be calculated below
+        })
+    end
+    
+    -- Count total entries for logging
+    local totalEntries = 0
+    for _ in pairs(SpectrumLootHelperDB.playerData) do
+        totalEntries = totalEntries + 1
+    end
+    
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Database now contains entries", {
+            totalEntries = totalEntries,
+            newEntryKey = key
+        })
+    end
+    
+    return true, key
 end
 
 -- TODO: Update existing player entry

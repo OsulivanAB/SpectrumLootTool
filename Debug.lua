@@ -987,23 +987,153 @@ end
 
 -- Export debug logs for bug reports
 function SLH.Debug:ExportForBugReport()
-    -- Placeholder for bug report export
-    -- Will handle:
-    -- - Format logs for bug report submission
-    -- - Include system information (WoW version, addon version, etc.)
-    -- - Create compact, readable format
-    -- - Include session context and statistics
+    -- Create comprehensive bug report export with system information and logs
+    local lines = {}
     
-    -- Returns formatted string suitable for copying to bug reports
-    return "Debug log export placeholder"
+    -- Header with timestamp
+    table.insert(lines, "=== SpectrumLootTool Debug Report ===")
+    table.insert(lines, "Generated: " .. date("%Y-%m-%d %H:%M:%S"))
+    table.insert(lines, "")
+    
+    -- System Information
+    table.insert(lines, "--- System Information ---")
+    
+    -- WoW Version Information
+    local success, wowVersion = pcall(function()
+        local version, build, date, tocversion = GetBuildInfo()
+        return string.format("Version: %s, Build: %s, Date: %s, TOC: %s", version, build, date, tocversion)
+    end)
+    table.insert(lines, "WoW: " .. (success and wowVersion or "Unknown"))
+    
+    -- Addon Version
+    table.insert(lines, "Addon Version: " .. (SLH.version or "Unknown"))
+    table.insert(lines, "Debug Version: " .. (self.version or "Unknown"))
+    
+    -- Player and Guild Information
+    local playerName = UnitName("player") or "Unknown"
+    local guildName = GetGuildInfo("player") or "None"
+    table.insert(lines, "Player: " .. playerName)
+    table.insert(lines, "Guild: " .. guildName)
+    
+    -- Group Status
+    local groupStatus = "Solo"
+    if IsInRaid() then
+        groupStatus = "Raid (" .. GetNumGroupMembers() .. " members)"
+    elseif IsInGroup() then
+        groupStatus = "Party (" .. GetNumGroupMembers() .. " members)"
+    end
+    table.insert(lines, "Group: " .. groupStatus)
+    
+    -- Debug System Status
+    table.insert(lines, "Debug Enabled: " .. tostring(self.enabled))
+    if self.sessionStartTime then
+        local sessionDuration = GetServerTime() - self.sessionStartTime
+        table.insert(lines, "Session Duration: " .. self:_FormatDuration(sessionDuration))
+    end
+    table.insert(lines, "")
+    
+    -- Statistics Summary
+    table.insert(lines, "--- Debug Statistics ---")
+    local stats = self:GetStats()
+    table.insert(lines, "Total Log Entries: " .. stats.totalEntries)
+    table.insert(lines, "Memory Usage: " .. self:_FormatBytes(stats.memoryUsage))
+    table.insert(lines, "Session Uptime: " .. self:_FormatDuration(stats.sessionDuration))
+    
+    -- Log Entries by Level
+    if stats.logEntriesByLevel then
+        table.insert(lines, "Entries by Level:")
+        for level, count in pairs(stats.logEntriesByLevel) do
+            table.insert(lines, "  " .. level .. ": " .. count)
+        end
+    end
+    
+    -- Log Entries by Component
+    if stats.logEntriesByComponent then
+        table.insert(lines, "Entries by Component:")
+        for component, count in pairs(stats.logEntriesByComponent) do
+            table.insert(lines, "  " .. component .. ": " .. count)
+        end
+    end
+    table.insert(lines, "")
+    
+    -- Recent Log Entries (last 50 or all if fewer)
+    table.insert(lines, "--- Recent Debug Logs ---")
+    local recentLogs = self:GetSessionLogs(nil, nil, 50)
+    
+    if #recentLogs == 0 then
+        table.insert(lines, "No debug logs in current session.")
+    else
+        table.insert(lines, "Showing " .. #recentLogs .. " most recent entries:")
+        table.insert(lines, "")
+        
+        for _, logEntry in ipairs(recentLogs) do
+            -- Format: [TIME] LEVEL [COMPONENT] MESSAGE (DATA)
+            local timestamp = date("%H:%M:%S", logEntry.timestamp)
+            local levelStr = string.upper(logEntry.level or "INFO")
+            local componentStr = logEntry.component or "Unknown"
+            local messageStr = logEntry.message or ""
+            
+            local logLine = string.format("[%s] %s [%s] %s", 
+                timestamp, levelStr, componentStr, messageStr)
+            
+            -- Add data context if present
+            if logEntry.data then
+                local dataStr = self:_SerializeLogData(logEntry.data)
+                if dataStr and dataStr ~= "" then
+                    logLine = logLine .. " (" .. dataStr .. ")"
+                end
+            end
+            
+            table.insert(lines, logLine)
+        end
+    end
+    
+    -- Footer
+    table.insert(lines, "")
+    table.insert(lines, "=== End Debug Report ===")
+    table.insert(lines, "")
+    table.insert(lines, "Please copy this entire report when submitting bug reports.")
+    table.insert(lines, "Include steps to reproduce the issue and any error messages seen in-game.")
+    
+    -- Join all lines and return
+    local report = table.concat(lines, "\n")
+    
+    -- Log the export action
+    self:LogInfo("Debug", "Bug report exported", { 
+        reportSize = string.len(report),
+        logEntries = #recentLogs,
+        sessionDuration = stats.sessionDuration
+    })
+    
+    return report
 end
 
 -- Toggle debug logging via slash command
 function SLH.Debug:Toggle()
-    -- Placeholder for debug toggle functionality
-    -- Will handle:
-    -- - Toggle enabled state
-    -- - Provide user feedback
-    -- - Log the toggle action
+    -- Store previous state for logging
+    local wasEnabled = self.enabled
+    
+    -- Toggle the enabled state
     self:SetEnabled(not self.enabled)
+    
+    -- Provide user feedback in chat
+    if self.enabled then
+        print("|cff00ff00SLH Debug: Debug logging ENABLED|r")
+        print("|cff00ff00Use '/slh debug off' to disable or '/slh debug export' for bug reports|r")
+        
+        -- Log the enable action
+        self:LogInfo("Debug", "Debug logging enabled via toggle command", {
+            previousState = wasEnabled,
+            sessionStartTime = self.sessionStartTime
+        })
+    else
+        print("|cffff0000SLH Debug: Debug logging DISABLED|r")
+        print("|cffff0000Use '/slh debug on' to re-enable debug output|r")
+        
+        -- Log the disable action (this will be one of the last entries before disabling)
+        self:LogInfo("Debug", "Debug logging disabled via toggle command", {
+            previousState = wasEnabled,
+            sessionDuration = self.sessionStartTime and (GetServerTime() - self.sessionStartTime) or 0
+        })
+    end
 end

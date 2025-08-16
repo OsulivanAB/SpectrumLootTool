@@ -23,8 +23,10 @@ function SLH:Init()
         self.Debug:Init()
         self.Debug:StartSession()
         self.Debug:LogInfo("Core", "Addon initialized", { version = self.version })
-        self.Debug:LogInfo("Core", "Debug system Task 15 integration testing available", { 
-            commands = { "/slh debuglog test core", "/slh debuglog test perf", "/slh debuglog test all" }
+        self.Debug:LogInfo("Core", "Debug system integration testing available", { 
+            coreTests = { "/slh debuglog test core", "/slh debuglog test perf" },
+            uiTests = { "/slh debuglog test ui", "/slh debuglog test workflow" },
+            comprehensiveTest = "/slh debuglog test all"
         })
     end
     
@@ -345,9 +347,13 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
                 print("|cff00ff00Session Duration: " .. stats.sessionDuration .. "s|r")
             end
         elseif args[2] == "test" then
-            -- Task 15: Integration Testing Commands
+            -- Task 15 & 16: Integration Testing Commands
             if args[3] == "core" then
                 SLH.Debug:RunCoreIntegrationTest()
+            elseif args[3] == "ui" or args[3] == "interface" then
+                SLH.Debug:RunUserInterfaceTest()
+            elseif args[3] == "workflow" or args[3] == "workflows" then
+                SLH.Debug:RunUserWorkflowTest()
             elseif args[3] == "performance" or args[3] == "perf" then
                 SLH.Debug:RunPerformanceValidation()
             elseif args[3] == "all" then
@@ -355,6 +361,8 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
             else
                 print("|cff00ff00=== SLH Debug Integration Tests ===|r")
                 print("|cff00ff00/slh debuglog test core - Run core functionality test|r")
+                print("|cff00ff00/slh debuglog test ui - Run user interface test|r")
+                print("|cff00ff00/slh debuglog test workflow - Run user workflow test|r")
                 print("|cff00ff00/slh debuglog test perf - Run performance validation|r")
                 print("|cff00ff00/slh debuglog test all - Run all integration tests|r")
             end

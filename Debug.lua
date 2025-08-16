@@ -1538,3 +1538,557 @@ function SLH.Debug:RunAllIntegrationTests()
         needsOptimization = hasPerformanceIssues
     }
 end
+
+-- ========================================
+-- TASK 16: INTEGRATION TESTING - USER INTERFACE
+-- ========================================
+
+-- Comprehensive integration test for user interface functionality
+function SLH.Debug:RunUserInterfaceTest()
+    local testResults = {
+        testName = "Debug System User Interface Integration Test",
+        startTime = GetServerTime(),
+        tests = {},
+        passed = 0,
+        failed = 0,
+        errors = {}
+    }
+    
+    print("|cff00ff00=== SLH Debug: Starting User Interface Integration Test ===|r")
+    
+    -- Test 1: Chat Display Functionality
+    local function testChatDisplay()
+        local success, result = pcall(function()
+            -- First ensure we have some logs to display
+            local initialCount = #self.logBuffer
+            local wasEnabled = self.enabled
+            
+            if not self.enabled then
+                self:SetEnabled(true)
+            end
+            
+            -- Add test logs for display testing
+            self:LogInfo("UITest", "Test message for chat display", {testType = "chat"})
+            self:LogWarn("UITest", "Warning message for display", {testType = "chat"})
+            self:LogError("UITest", "Error message for display", {testType = "chat"})
+            
+            -- Test DisplayLogsInChat with various parameters
+            local displaySuccess = pcall(function()
+                -- Test basic display (should not error)
+                self:DisplayLogsInChat(nil, nil, 5)
+                
+                -- Test level filtering
+                self:DisplayLogsInChat("INFO", nil, 3)
+                
+                -- Test component filtering  
+                self:DisplayLogsInChat(nil, "UITest", 2)
+                
+                -- Test combined filtering
+                self:DisplayLogsInChat("INFO", "UITest", 1)
+            end)
+            
+            self:SetEnabled(wasEnabled)
+            
+            return {
+                hadInitialLogs = initialCount > 0,
+                addedTestLogs = #self.logBuffer > initialCount,
+                displayExecuted = displaySuccess,
+                logBufferValid = type(self.logBuffer) == "table"
+            }
+        end)
+        
+        if success and result.displayExecuted and result.logBufferValid then
+            return true, "Chat display functionality working correctly"
+        else
+            return false, "Chat display failed: " .. (success and "Display errors" or tostring(result))
+        end
+    end
+    
+    -- Test 2: Export Functionality
+    local function testExportFunctionality()
+        local success, result = pcall(function()
+            -- Test ExportForBugReport
+            local exportData = self:ExportForBugReport()
+            
+            -- Validate export structure
+            local hasHeader = string.find(exportData, "SpectrumLootTool Debug Report")
+            local hasSystemInfo = string.find(exportData, "System Information")
+            local hasDebugStats = string.find(exportData, "Debug Statistics")
+            local hasRecentLogs = string.find(exportData, "Recent Debug Logs")
+            local hasFooter = string.find(exportData, "End Debug Report")
+            
+            return {
+                exportGenerated = type(exportData) == "string" and string.len(exportData) > 0,
+                hasRequiredSections = hasHeader and hasSystemInfo and hasDebugStats and hasRecentLogs and hasFooter,
+                exportSize = string.len(exportData),
+                validFormat = hasHeader and hasFooter
+            }
+        end)
+        
+        if success and result.exportGenerated and result.hasRequiredSections then
+            return true, string.format("Export functionality working (%d chars)", result.exportSize)
+        else
+            return false, "Export functionality failed: " .. (success and "Missing sections" or tostring(result))
+        end
+    end
+    
+    -- Test 3: Toggle Command Interface
+    local function testToggleInterface()
+        local success, result = pcall(function()
+            local originalState = self.enabled
+            local toggleResults = {}
+            
+            -- Test toggle functionality
+            local initialState = self.enabled
+            self:Toggle()
+            local afterFirstToggle = self.enabled
+            self:Toggle()
+            local afterSecondToggle = self.enabled
+            
+            -- Restore original state
+            if self.enabled ~= originalState then
+                self:SetEnabled(originalState)
+            end
+            
+            return {
+                initialState = initialState,
+                changedOnFirstToggle = afterFirstToggle ~= initialState,
+                revertedOnSecondToggle = afterSecondToggle == initialState,
+                stateRestored = self.enabled == originalState,
+                toggleWorking = afterFirstToggle ~= initialState and afterSecondToggle == initialState
+            }
+        end)
+        
+        if success and result.toggleWorking and result.stateRestored then
+            return true, "Toggle interface working correctly"
+        else
+            return false, "Toggle interface failed: " .. (success and "State management issue" or tostring(result))
+        end
+    end
+    
+    -- Test 4: Slash Command Integration
+    local function testSlashCommands()
+        local success, result = pcall(function()
+            -- Test that key slash command functions exist and are callable
+            -- We'll test the functions directly rather than the slash command parser
+            
+            local functionsExist = {
+                setEnabled = type(self.SetEnabled) == "function",
+                isEnabled = type(self.IsEnabled) == "function",
+                toggle = type(self.Toggle) == "function",
+                displayLogs = type(self.DisplayLogsInChat) == "function",
+                clearLogs = type(self.ClearLogs) == "function",
+                exportBugReport = type(self.ExportForBugReport) == "function",
+                getStats = type(self.GetStats) == "function"
+            }
+            
+            -- Test SetEnabled calls (safe state changes)
+            local originalState = self.enabled
+            local setEnabledWorks = false
+            local isEnabledWorks = false
+            
+            pcall(function()
+                self:SetEnabled(true)
+                setEnabledWorks = self:IsEnabled() == true
+                self:SetEnabled(false) 
+                isEnabledWorks = self:IsEnabled() == false
+                self:SetEnabled(originalState) -- Restore
+            end)
+            
+            -- Test basic function calls that should not error
+            local basicCallsWork = true
+            local callSuccess = pcall(function()
+                self:GetStats() -- Should always work
+                if #self.logBuffer > 0 then
+                    self:DisplayLogsInChat(nil, nil, 1) -- Safe small display
+                end
+            end)
+            if not callSuccess then
+                basicCallsWork = false
+            end
+            
+            -- Check if all functions exist
+            local allFunctionsExist = true
+            for _, exists in pairs(functionsExist) do
+                if not exists then
+                    allFunctionsExist = false
+                    break
+                end
+            end
+            
+            return {
+                allFunctionsExist = allFunctionsExist,
+                setEnabledWorks = setEnabledWorks,
+                isEnabledWorks = isEnabledWorks,
+                basicCallsWork = basicCallsWork,
+                functionsCount = 0 -- Count working functions
+            }
+        end)
+        
+        -- Count working functions
+        if success then
+            result.functionsCount = 7 -- Expected function count: SetEnabled, IsEnabled, Toggle, DisplayLogsInChat, ClearLogs, ExportForBugReport, GetStats
+        end
+        
+        if success and result.allFunctionsExist and result.setEnabledWorks and result.basicCallsWork then
+            return true, "Slash command integration functions working"
+        else
+            return false, "Slash command functions failed: " .. (success and "Function issues" or tostring(result))
+        end
+    end
+    
+    -- Test 5: User Experience Elements
+    local function testUserExperience()
+        local success, result = pcall(function()
+            -- Test color-coded output and formatting
+            local originalState = self.enabled
+            if not self.enabled then
+                self:SetEnabled(true)
+            end
+            
+            -- Add various log types for UX testing
+            self:LogInfo("UXTest", "User experience test info message", {ux = "info"})
+            self:LogWarn("UXTest", "User experience test warning", {ux = "warn"})
+            self:LogError("UXTest", "User experience test error", {ux = "error"})
+            
+            -- Test formatting functions
+            local formattingWorks = true
+            local formatSuccess = pcall(function()
+                local testEntry = {
+                    timestamp = GetServerTime(),
+                    level = "INFO",
+                    component = "UXTest",
+                    message = "Format test",
+                    data = {test = true}
+                }
+                
+                local formatted = self:_FormatLogEntryForChat(testEntry)
+                formattingWorks = type(formatted) == "string" and string.len(formatted) > 0
+            end)
+            if not formatSuccess then
+                formattingWorks = false
+            end
+            
+            -- Test stats formatting
+            local stats = self:GetStats()
+            local statsValid = type(stats) == "table" and 
+                              type(stats.totalEntries) == "number" and
+                              type(stats.sessionDuration) == "number"
+            
+            self:SetEnabled(originalState)
+            
+            return {
+                logVarietyAdded = true,
+                formattingWorks = formattingWorks, 
+                statsFormatValid = statsValid,
+                userFeedbackPresent = true -- Toggle function provides feedback
+            }
+        end)
+        
+        if success and result.formattingWorks and result.statsFormatValid then
+            return true, "User experience elements working correctly"
+        else
+            return false, "User experience failed: " .. (success and "Formatting issues" or tostring(result))
+        end
+    end
+    
+    -- Run all UI tests
+    local tests = {
+        {name = "Chat Display Functionality", func = testChatDisplay},
+        {name = "Export Functionality", func = testExportFunctionality},
+        {name = "Toggle Command Interface", func = testToggleInterface},
+        {name = "Slash Command Integration", func = testSlashCommands},
+        {name = "User Experience Elements", func = testUserExperience}
+    }
+    
+    for _, test in ipairs(tests) do
+        local success, message = test.func()
+        local result = {
+            name = test.name,
+            passed = success,
+            message = message,
+            timestamp = GetServerTime()
+        }
+        
+        table.insert(testResults.tests, result)
+        
+        if success then
+            testResults.passed = testResults.passed + 1
+            print("|cff00ff00✅ " .. test.name .. ": " .. message .. "|r")
+        else
+            testResults.failed = testResults.failed + 1
+            table.insert(testResults.errors, test.name .. ": " .. message)
+            print("|cffff0000❌ " .. test.name .. ": " .. message .. "|r")
+        end
+    end
+    
+    -- Generate summary
+    testResults.endTime = GetServerTime()
+    testResults.duration = testResults.endTime - testResults.startTime
+    testResults.totalTests = #tests
+    testResults.successRate = (testResults.passed / testResults.totalTests) * 100
+    
+    print("|cff00ff00=== User Interface Test Summary ===|r")
+    print(string.format("|cff00ff00Tests Passed: %d/%d (%.1f%%)|r", 
+        testResults.passed, testResults.totalTests, testResults.successRate))
+    print(string.format("|cff00ff00Duration: %.2f seconds|r", testResults.duration))
+    
+    if testResults.failed > 0 then
+        print("|cffff0000Failed Tests:|r")
+        for _, error in ipairs(testResults.errors) do
+            print("|cffff0000  - " .. error .. "|r")
+        end
+    end
+    
+    -- Log the test results
+    self:LogInfo("UITest", "User interface integration test completed", {
+        passed = testResults.passed,
+        failed = testResults.failed,
+        successRate = testResults.successRate,
+        duration = testResults.duration
+    })
+    
+    return testResults
+end
+
+-- Test comprehensive user workflows and scenarios
+function SLH.Debug:RunUserWorkflowTest()
+    local workflowResults = {
+        testName = "Debug System User Workflow Test",
+        startTime = GetServerTime(),
+        scenarios = {},
+        passed = 0,
+        failed = 0
+    }
+    
+    print("|cff00ff00=== SLH Debug: Starting User Workflow Test ===|r")
+    
+    -- Scenario 1: New User Discovery Workflow
+    local function testNewUserWorkflow()
+        local success, result = pcall(function()
+            -- Simulate new user discovering debug system
+            local originalState = self.enabled
+            
+            -- 1. User runs status command (should work when disabled)
+            local stats = self:GetStats()
+            local statusWorks = type(stats) == "table"
+            
+            -- 2. User enables debug logging
+            self:SetEnabled(true)
+            local enabledSuccessfully = self:IsEnabled()
+            
+            -- 3. User generates some activity to log
+            self:LogInfo("WorkflowTest", "New user testing debug system", {scenario = "discovery"})
+            
+            -- 4. User views recent logs
+            local viewSuccess = pcall(function()
+                self:DisplayLogsInChat(nil, nil, 5)
+            end)
+            
+            -- 5. User exports for sharing/bug report
+            local exportData = self:ExportForBugReport()
+            local exportWorks = type(exportData) == "string" and string.len(exportData) > 100
+            
+            -- 6. User disables when done
+            self:SetEnabled(false)
+            local disabledSuccessfully = not self:IsEnabled()
+            
+            -- Restore state
+            self:SetEnabled(originalState)
+            
+            return {
+                statusAccessible = statusWorks,
+                enabledSuccessfully = enabledSuccessfully,
+                loggingWorked = #self.logBuffer > 0,
+                viewWorked = viewSuccess,
+                exportWorked = exportWorks,
+                disabledSuccessfully = disabledSuccessfully,
+                completeWorkflow = statusWorks and enabledSuccessfully and viewSuccess and exportWorks
+            }
+        end)
+        
+        if success and result.completeWorkflow then
+            return true, "New user discovery workflow successful"
+        else
+            return false, "New user workflow failed: " .. (success and "Workflow incomplete" or tostring(result))
+        end
+    end
+    
+    -- Scenario 2: Bug Reporting Workflow  
+    local function testBugReportingWorkflow()
+        local success, result = pcall(function()
+            local originalState = self.enabled
+            
+            -- 1. User encounters issue, enables debug logging
+            self:SetEnabled(true)
+            
+            -- 2. User reproduces issue (simulate with various log entries)
+            self:LogError("BugReport", "Simulated error condition", {error = "test_error", context = "reproduction"})
+            self:LogWarn("BugReport", "Warning before error", {warning = "pre_error"})
+            self:LogInfo("BugReport", "User action leading to issue", {action = "reproduce_bug"})
+            
+            -- 3. User exports debug data
+            local exportData = self:ExportForBugReport()
+            
+            -- 4. Validate export contains useful information
+            local hasErrorInfo = string.find(exportData, "Simulated error condition")
+            local hasSystemInfo = string.find(exportData, "System Information")
+            local hasInstructions = string.find(exportData, "copy this entire report")
+            
+            -- 5. User can clear logs for fresh session
+            local initialLogCount = #self.logBuffer
+            self:ClearLogs()
+            local clearedSuccessfully = #self.logBuffer < initialLogCount
+            
+            self:SetEnabled(originalState)
+            
+            return {
+                reproductionLogged = true,
+                exportGenerated = type(exportData) == "string" and string.len(exportData) > 0,
+                exportContainsError = hasErrorInfo,
+                exportHasSystemInfo = hasSystemInfo,
+                exportHasInstructions = hasInstructions,
+                clearedSuccessfully = clearedSuccessfully,
+                workflowComplete = hasErrorInfo and hasSystemInfo and hasInstructions
+            }
+        end)
+        
+        if success and result.workflowComplete and result.exportGenerated then
+            return true, "Bug reporting workflow successful"
+        else
+            return false, "Bug reporting workflow failed: " .. (success and "Export issues" or tostring(result))
+        end
+    end
+    
+    -- Scenario 3: Performance Monitoring Workflow
+    local function testPerformanceMonitoringWorkflow()
+        local success, result = pcall(function()
+            local originalState = self.enabled
+            
+            -- 1. User enables debug for performance monitoring
+            self:SetEnabled(true)
+            
+            -- 2. Simulate heavy usage
+            for i = 1, 20 do
+                self:LogDebug("PerfMonitor", "Performance test iteration " .. i, {iteration = i, load = "heavy"})
+            end
+            
+            -- 3. User checks performance stats
+            local stats = self:GetStats()
+            local hasPerformanceData = stats.totalEntries and stats.memoryUsage and stats.sessionDuration
+            
+            -- 4. User runs performance validation
+            local perfResults = self:RunPerformanceValidation()
+            local perfTestWorks = type(perfResults) == "table" and perfResults.metrics
+            
+            -- 5. User optimizes by clearing old logs if needed
+            local beforeClear = #self.logBuffer
+            if beforeClear > 50 then
+                self:ClearLogs()
+            end
+            local afterClear = #self.logBuffer
+            
+            self:SetEnabled(originalState)
+            
+            return {
+                heavyUsageLogged = beforeClear > 15,
+                performanceStatsAvailable = hasPerformanceData,
+                performanceTestWorks = perfTestWorks,
+                optimizationAvailable = beforeClear ~= afterClear or beforeClear <= 50,
+                monitoringWorkflow = hasPerformanceData and perfTestWorks
+            }
+        end)
+        
+        if success and result.monitoringWorkflow then
+            return true, "Performance monitoring workflow successful"
+        else
+            return false, "Performance monitoring failed: " .. (success and "Monitoring issues" or tostring(result))
+        end
+    end
+    
+    -- Run workflow scenarios
+    local scenarios = {
+        {name = "New User Discovery", func = testNewUserWorkflow},
+        {name = "Bug Reporting Workflow", func = testBugReportingWorkflow},
+        {name = "Performance Monitoring", func = testPerformanceMonitoringWorkflow}
+    }
+    
+    for _, scenario in ipairs(scenarios) do
+        local success, message = scenario.func()
+        local result = {
+            name = scenario.name,
+            passed = success,
+            message = message,
+            timestamp = GetServerTime()
+        }
+        
+        table.insert(workflowResults.scenarios, result)
+        
+        if success then
+            workflowResults.passed = workflowResults.passed + 1
+            print("|cff00ff00✅ " .. scenario.name .. ": " .. message .. "|r")
+        else
+            workflowResults.failed = workflowResults.failed + 1
+            print("|cffff0000❌ " .. scenario.name .. ": " .. message .. "|r")
+        end
+    end
+    
+    -- Generate summary
+    workflowResults.endTime = GetServerTime()
+    workflowResults.duration = workflowResults.endTime - workflowResults.startTime
+    workflowResults.totalScenarios = #scenarios
+    workflowResults.successRate = (workflowResults.passed / workflowResults.totalScenarios) * 100
+    
+    print("|cff00ff00=== Workflow Test Summary ===|r")
+    print(string.format("|cff00ff00Scenarios Passed: %d/%d (%.1f%%)|r", 
+        workflowResults.passed, workflowResults.totalScenarios, workflowResults.successRate))
+    print(string.format("|cff00ff00Duration: %.2f seconds|r", workflowResults.duration))
+    
+    -- Log workflow results
+    self:LogInfo("WorkflowTest", "User workflow test completed", {
+        passed = workflowResults.passed,
+        failed = workflowResults.failed,
+        successRate = workflowResults.successRate
+    })
+    
+    return workflowResults
+end
+
+-- Update the comprehensive test function to include UI testing
+function SLH.Debug:RunAllIntegrationTests()
+    print("|cff00ff00========================================|r")
+    print("|cff00ff00    SLH Debug Integration Testing    |r") 
+    print("|cff00ff00========================================|r")
+    
+    local coreResults = self:RunCoreIntegrationTest()
+    print("")
+    local uiResults = self:RunUserInterfaceTest()
+    print("")
+    local workflowResults = self:RunUserWorkflowTest()
+    print("")
+    local perfResults = self:RunPerformanceValidation()
+    
+    print("|cff00ff00========================================|r")
+    print("|cff00ff00         Testing Complete           |r")
+    print("|cff00ff00========================================|r")
+    
+    local allPassed = coreResults.failed == 0 and uiResults.failed == 0 and workflowResults.failed == 0
+    local hasPerformanceIssues = #perfResults.recommendations > 0
+    
+    if allPassed and not hasPerformanceIssues then
+        print("|cff00ff00🎉 All tests passed with optimal performance!|r")
+    elseif allPassed then
+        print("|cffff8800✅ All tests passed, but performance could be improved.|r")
+    else
+        print("|cffff0000❌ Some tests failed. Review the results above.|r")
+    end
+    
+    return {
+        coreIntegration = coreResults,
+        userInterface = uiResults,
+        userWorkflows = workflowResults,
+        performance = perfResults,
+        overallSuccess = allPassed,
+        needsOptimization = hasPerformanceIssues
+    }
+end

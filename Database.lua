@@ -30,18 +30,70 @@ Database.EQUIPMENT_SLOTS = {
 -- DATABASE INITIALIZATION
 -- ============================================================================
 
--- TODO: Initialize database and saved variables
--- Placeholder for setting up SpectrumLootHelperDB.playerData table
--- Will ensure proper structure exists and handle first-time setup
+-- Initialize database and saved variables
+-- Sets up SpectrumLootHelperDB.playerData table structure
+-- Handles first-time setup and ensures proper database structure
 function Database:Init()
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "Database:Init() called", {})
     end
     
-    -- TODO: Initialize SpectrumLootHelperDB.playerData if not exists
-    -- TODO: Set up database version tracking
-    -- TODO: Ensure saved variables structure is correct
-    -- TODO: Log initialization completion
+    -- Ensure SpectrumLootHelperDB exists (should be initialized by Core.lua)
+    if not SpectrumLootHelperDB then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "SpectrumLootHelperDB not found during Database:Init()", {})
+        end
+        return false
+    end
+    
+    -- Initialize playerData table if it doesn't exist
+    if not SpectrumLootHelperDB.playerData then
+        SpectrumLootHelperDB.playerData = {}
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Created new playerData table", {})
+        end
+    end
+    
+    -- Set up database version tracking
+    if not SpectrumLootHelperDB.databaseVersion then
+        SpectrumLootHelperDB.databaseVersion = Database.DB_VERSION
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Set initial database version", { 
+                version = Database.DB_VERSION 
+            })
+        end
+    end
+    
+    -- Verify saved variables structure is correct
+    local structureValid = true
+    if type(SpectrumLootHelperDB.playerData) ~= "table" then
+        structureValid = false
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Invalid playerData structure - not a table", {
+                actualType = type(SpectrumLootHelperDB.playerData)
+            })
+        end
+    end
+    
+    if not structureValid then
+        -- Reset to correct structure if corrupted
+        SpectrumLootHelperDB.playerData = {}
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Reset corrupted playerData structure", {})
+        end
+    end
+    
+    -- Log successful initialization completion
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Database initialization completed", {
+            dbVersion = Database.DB_VERSION,
+            equipmentSlots = #Database.EQUIPMENT_SLOTS,
+            playerDataExists = SpectrumLootHelperDB.playerData ~= nil,
+            structureValid = structureValid
+        })
+    end
+    
+    return true
 end
 
 -- ============================================================================
@@ -367,6 +419,14 @@ local function OnAddonLoaded(event, addonName)
     end
 end
 
--- TODO: Register events for database initialization
--- EventFrame:RegisterEvent("ADDON_LOADED")
--- EventFrame:SetScript("OnEvent", OnAddonLoaded)
+-- Create event frame and register events for database initialization
+local DatabaseEventFrame = CreateFrame("Frame")
+DatabaseEventFrame:RegisterEvent("ADDON_LOADED")
+DatabaseEventFrame:SetScript("OnEvent", OnAddonLoaded)
+
+-- Log that event frame has been set up
+if SLH.Debug then
+    SLH.Debug:LogDebug("Database", "Event frame registered", {
+        events = {"ADDON_LOADED"}
+    })
+end

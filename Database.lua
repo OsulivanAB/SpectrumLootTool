@@ -564,19 +564,132 @@ function Database:ValidateEquipment(equipment)
     return true, nil
 end
 
--- TODO: Validate complete database entry
+-- Validate complete database entry
+-- Uses ValidateVenariiCharges() and ValidateEquipment() to check entry structure matches schema
+-- Returns comprehensive validation result with error details
 function Database:ValidateEntry(entry)
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "ValidateEntry() called", {
-            hasEntry = entry ~= nil
+            hasEntry = entry ~= nil,
+            entryType = type(entry)
         })
     end
     
-    -- TODO: Check entry structure matches schema
-    -- TODO: Validate LastUpdate is a timestamp
-    -- TODO: Validate VenariiCharges using ValidateVenariiCharges()
-    -- TODO: Validate Equipment using ValidateEquipment()
-    -- TODO: Return comprehensive validation result
+    -- Check entry structure matches schema - must be a table
+    if type(entry) ~= "table" then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry validation failed - not a table", {
+                entry = entry,
+                actualType = type(entry),
+                expectedType = "table"
+            })
+        end
+        return false, "Entry must be a table"
+    end
+    
+    -- Validate LastUpdate is a timestamp (number)
+    if entry.LastUpdate == nil then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry validation failed - missing LastUpdate", {
+                hasLastUpdate = false
+            })
+        end
+        return false, "Entry must have LastUpdate field"
+    end
+    
+    if type(entry.LastUpdate) ~= "number" then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry validation failed - invalid LastUpdate type", {
+                lastUpdate = entry.LastUpdate,
+                actualType = type(entry.LastUpdate),
+                expectedType = "number"
+            })
+        end
+        return false, "LastUpdate must be a number (timestamp)"
+    end
+    
+    -- Validate VenariiCharges using ValidateVenariiCharges()
+    if entry.VenariiCharges == nil then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry validation failed - missing VenariiCharges", {
+                hasVenariiCharges = false
+            })
+        end
+        return false, "Entry must have VenariiCharges field"
+    end
+    
+    local chargesValid, chargesError = self:ValidateVenariiCharges(entry.VenariiCharges)
+    if not chargesValid then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry validation failed - invalid VenariiCharges", {
+                venariiCharges = entry.VenariiCharges,
+                error = chargesError
+            })
+        end
+        return false, "VenariiCharges validation failed: " .. (chargesError or "unknown error")
+    end
+    
+    -- Validate Equipment using ValidateEquipment()
+    if entry.Equipment == nil then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry validation failed - missing Equipment", {
+                hasEquipment = false
+            })
+        end
+        return false, "Entry must have Equipment field"
+    end
+    
+    local equipmentValid, equipmentError = self:ValidateEquipment(entry.Equipment)
+    if not equipmentValid then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry validation failed - invalid Equipment", {
+                equipment = entry.Equipment,
+                error = equipmentError
+            })
+        end
+        return false, "Equipment validation failed: " .. (equipmentError or "unknown error")
+    end
+    
+    -- Check for unexpected fields (warn but don't fail)
+    local expectedFields = { "LastUpdate", "VenariiCharges", "Equipment" }
+    local unexpectedFields = {}
+    
+    for fieldName, _ in pairs(entry) do
+        local found = false
+        for _, expectedField in ipairs(expectedFields) do
+            if fieldName == expectedField then
+                found = true
+                break
+            end
+        end
+        if not found then
+            table.insert(unexpectedFields, fieldName)
+        end
+    end
+    
+    if #unexpectedFields > 0 then
+        if SLH.Debug then
+            SLH.Debug:LogWarn("Database", "Entry validation warning - unexpected fields found", {
+                unexpectedFields = unexpectedFields,
+                unexpectedCount = #unexpectedFields
+            })
+        end
+        -- Note: We don't fail validation for unexpected fields, just warn
+    end
+    
+    -- Log successful validation
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Entry validation successful", {
+            hasLastUpdate = entry.LastUpdate ~= nil,
+            hasVenariiCharges = entry.VenariiCharges ~= nil,
+            hasEquipment = entry.Equipment ~= nil,
+            unexpectedFields = #unexpectedFields,
+            isValid = true
+        })
+    end
+    
+    -- Return comprehensive validation success
+    return true, nil
 end
 
 -- ============================================================================

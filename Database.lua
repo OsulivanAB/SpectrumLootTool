@@ -30,6 +30,26 @@ Database.EQUIPMENT_SLOTS = {
 -- DATABASE INITIALIZATION
 -- ============================================================================
 
+-- ============================================================================
+-- ERROR HANDLING UTILITIES (Task 9)
+-- ============================================================================
+
+-- Safe function execution wrapper with error handling
+-- Uses pcall to catch errors and log them appropriately
+local function SafeExecute(operation, funcName, ...)
+    local success, result = pcall(operation, ...)
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Error in " .. funcName, {
+                error = result,
+                function_name = funcName
+            })
+        end
+        return false, result
+    end
+    return true, result
+end
+
 -- Initialize database and saved variables
 -- Sets up SpectrumLootHelperDB.playerData table structure
 -- Handles first-time setup and ensures proper database structure
@@ -37,6 +57,26 @@ function Database:Init()
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "Database:Init() called", {})
     end
+    
+    -- Wrap the entire initialization in error handling
+    local success, result = SafeExecute(function()
+        return Database:_InitInternal()
+    end, "Init")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Database initialization failed", {
+                error = result
+            })
+        end
+        return false
+    end
+    
+    return result
+end
+
+-- Internal initialization logic (separated for error handling)
+function Database:_InitInternal()
     
     -- Ensure SpectrumLootHelperDB exists (should be initialized by Core.lua)
     if not SpectrumLootHelperDB then
@@ -148,6 +188,26 @@ function Database:GetEntrySchema()
         SLH.Debug:LogDebug("Database", "GetEntrySchema() called", {})
     end
     
+    -- Wrap schema generation in error handling
+    local success, result = SafeExecute(function()
+        return Database:_GetEntrySchemaInternal()
+    end, "GetEntrySchema")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Schema generation failed", {
+                error = result
+            })
+        end
+        return nil
+    end
+    
+    return result
+end
+
+-- Internal schema generation logic (separated for error handling)
+function Database:_GetEntrySchemaInternal()
+    
     -- Create equipment structure with all slots defaulting to false
     local equipment = {}
     for i, slotName in ipairs(Database.EQUIPMENT_SLOTS) do
@@ -187,6 +247,29 @@ function Database:GenerateKey(playerName, serverName, wowVersion)
             wowVersion = wowVersion
         })
     end
+    
+    -- Wrap key generation in error handling
+    local success, result = SafeExecute(function()
+        return Database:_GenerateKeyInternal(playerName, serverName, wowVersion)
+    end, "GenerateKey")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Key generation failed", {
+                playerName = playerName,
+                serverName = serverName,
+                wowVersion = wowVersion,
+                error = result
+            })
+        end
+        return nil
+    end
+    
+    return result
+end
+
+-- Internal key generation logic (separated for error handling)
+function Database:_GenerateKeyInternal(playerName, serverName, wowVersion)
     
     -- Validate input parameters are not nil/empty
     if not playerName or playerName == "" then
@@ -252,6 +335,26 @@ function Database:GetCurrentPlayerKey()
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "GetCurrentPlayerKey() called", {})
     end
+    
+    -- Wrap current player key generation in error handling
+    local success, result = SafeExecute(function()
+        return Database:_GetCurrentPlayerKeyInternal()
+    end, "GetCurrentPlayerKey")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Current player key generation failed", {
+                error = result
+            })
+        end
+        return nil
+    end
+    
+    return result
+end
+
+-- Internal current player key logic (separated for error handling)
+function Database:_GetCurrentPlayerKeyInternal()
     
     -- Get current player name from WoW API
     local playerName = UnitName("player")
@@ -413,6 +516,27 @@ function Database:ValidateVenariiCharges(charges)
         })
     end
     
+    -- Wrap validation in error handling
+    local success, isValid, errorMsg = SafeExecute(function()
+        return Database:_ValidateVenariiChargesInternal(charges)
+    end, "ValidateVenariiCharges")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "VenariiCharges validation error", {
+                charges = charges,
+                error = isValid -- This contains the error message when success is false
+            })
+        end
+        return false, "Validation error: " .. tostring(isValid)
+    end
+    
+    return isValid, errorMsg
+end
+
+-- Internal VenariiCharges validation logic (separated for error handling)
+function Database:_ValidateVenariiChargesInternal(charges)
+    
     -- Check if charges is a number
     if type(charges) ~= "number" then
         if SLH.Debug then
@@ -469,6 +593,27 @@ function Database:ValidateEquipment(equipment)
             equipmentType = type(equipment)
         })
     end
+    
+    -- Wrap validation in error handling
+    local success, isValid, errorMsg = SafeExecute(function()
+        return Database:_ValidateEquipmentInternal(equipment)
+    end, "ValidateEquipment")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Equipment validation error", {
+                equipment = equipment,
+                error = isValid -- This contains the error message when success is false
+            })
+        end
+        return false, "Validation error: " .. tostring(isValid)
+    end
+    
+    return isValid, errorMsg
+end
+
+-- Internal equipment validation logic (separated for error handling)
+function Database:_ValidateEquipmentInternal(equipment)
     
     -- Check if equipment is a table
     if type(equipment) ~= "table" then
@@ -574,6 +719,27 @@ function Database:ValidateEntry(entry)
             entryType = type(entry)
         })
     end
+    
+    -- Wrap validation in error handling
+    local success, isValid, errorMsg = SafeExecute(function()
+        return Database:_ValidateEntryInternal(entry)
+    end, "ValidateEntry")
+    
+    if not success then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Entry validation error", {
+                entry = entry,
+                error = isValid -- This contains the error message when success is false
+            })
+        end
+        return false, "Validation error: " .. tostring(isValid)
+    end
+    
+    return isValid, errorMsg
+end
+
+-- Internal entry validation logic (separated for error handling)
+function Database:_ValidateEntryInternal(entry)
     
     -- Check entry structure matches schema - must be a table
     if type(entry) ~= "table" then

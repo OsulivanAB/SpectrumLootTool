@@ -140,27 +140,36 @@ end
 -- SCHEMA DEFINITION
 -- ============================================================================
 
--- TODO: Define and validate database entry structure
--- Each entry will contain:
--- {
---     LastUpdate = timestamp,
---     VenariiCharges = integer (>= 0),
---     Equipment = {
---         Head = boolean, Neck = boolean, Shoulder = boolean, Back = boolean,
---         Chest = boolean, Wrist = boolean, Gloves = boolean, Belt = boolean,
---         Legs = boolean, Feet = boolean, Ring1 = boolean, Ring2 = boolean,
---         Trinket1 = boolean, Trinket2 = boolean, MainHand = boolean, OffHand = boolean
---     }
--- }
+-- Define and validate database entry structure
+-- Returns template structure for new database entries
+-- Each entry contains: LastUpdate timestamp, VenariiCharges (>=0), Equipment (16 slots as booleans)
 function Database:GetEntrySchema()
     if SLH.Debug then
         SLH.Debug:LogDebug("Database", "GetEntrySchema() called", {})
     end
     
-    -- TODO: Return template structure for new database entries
-    -- TODO: Include all required fields with default values
-    -- TODO: Ensure equipment slots default to false
-    -- TODO: Set VenariiCharges default to 0
+    -- Create equipment structure with all slots defaulting to false
+    local equipment = {}
+    for i, slotName in ipairs(Database.EQUIPMENT_SLOTS) do
+        equipment[slotName] = false
+    end
+    
+    -- Create complete entry schema with defaults
+    local schema = {
+        LastUpdate = time(), -- Current timestamp
+        VenariiCharges = 0,  -- Default to 0 charges
+        Equipment = equipment -- All equipment slots default to false
+    }
+    
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Entry schema created", {
+            equipmentSlots = #Database.EQUIPMENT_SLOTS,
+            defaultVenariiCharges = schema.VenariiCharges,
+            hasTimestamp = schema.LastUpdate ~= nil
+        })
+    end
+    
+    return schema
 end
 
 -- ============================================================================

@@ -16,6 +16,11 @@
 - **Schema Defaults**: Equipment slots default to false, VenariiCharges to 0, includes LastUpdate timestamp
 - **Equipment Slots**: All 16 equipment slots properly defined in schema using EQUIPMENT_SLOTS constant
 - **Task 3 Complete**: Entry schema creation fully implemented with proper defaults and structure
+- **Player Keys**: Implemented Database:GenerateKey() function with PlayerName-ServerName-WoWVersion format
+- **Key Validation**: Input parameter validation with nil/empty checking and comprehensive error handling
+- **Name Sanitization**: Player and server name cleaning with whitespace and special character removal
+- **Version Parsing**: WoW version major.minor extraction (e.g., "10.2.5" -> "10.2")
+- **Task 4 Complete**: Player key generation fully implemented with validation and sanitization
 - **BREAKING CHANGE**: Removed entire synchronization system to prepare for fresh implementation
 - **Code Cleanup**: Removed Sync.lua file and all sync-related functionality from Core.lua
 - **Simplified Commands**: Removed sync-related slash commands (/slh syncdebug, /slh syncforce, /slh syncreq, /slh cleanup, /slh sectest)

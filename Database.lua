@@ -176,7 +176,7 @@ end
 -- KEY GENERATION
 -- ============================================================================
 
--- TODO: Generate unique database keys from player info
+-- Generate unique database keys from player info
 -- Format: "PlayerName-ServerName-WoWVersion"
 -- Example: "Osulivan-Garona-10.2"
 function Database:GenerateKey(playerName, serverName, wowVersion)
@@ -188,11 +188,61 @@ function Database:GenerateKey(playerName, serverName, wowVersion)
         })
     end
     
-    -- TODO: Validate input parameters are not nil/empty
-    -- TODO: Clean and normalize player/server names
-    -- TODO: Extract major.minor from WoW version if needed
-    -- TODO: Return formatted key string
-    -- TODO: Log key generation for debugging
+    -- Validate input parameters are not nil/empty
+    if not playerName or playerName == "" then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Invalid playerName parameter", { 
+                playerName = playerName 
+            })
+        end
+        return nil
+    end
+    
+    if not serverName or serverName == "" then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Invalid serverName parameter", { 
+                serverName = serverName 
+            })
+        end
+        return nil
+    end
+    
+    if not wowVersion or wowVersion == "" then
+        if SLH.Debug then
+            SLH.Debug:LogError("Database", "Invalid wowVersion parameter", { 
+                wowVersion = wowVersion 
+            })
+        end
+        return nil
+    end
+    
+    -- Clean and normalize player/server names
+    local cleanPlayerName = playerName:gsub("%s+", ""):gsub("[^%w%-]", "")
+    local cleanServerName = serverName:gsub("%s+", ""):gsub("[^%w%-]", "")
+    
+    -- Extract major.minor from WoW version if needed (e.g., "10.2.5" -> "10.2")
+    local majorMinor = wowVersion:match("(%d+%.%d+)")
+    if not majorMinor then
+        majorMinor = wowVersion -- Use as-is if pattern doesn't match
+    end
+    
+    -- Return formatted key string
+    local key = cleanPlayerName .. "-" .. cleanServerName .. "-" .. majorMinor
+    
+    -- Log key generation for debugging
+    if SLH.Debug then
+        SLH.Debug:LogInfo("Database", "Generated database key", {
+            originalPlayerName = playerName,
+            cleanPlayerName = cleanPlayerName,
+            originalServerName = serverName,
+            cleanServerName = cleanServerName,
+            originalWowVersion = wowVersion,
+            extractedVersion = majorMinor,
+            generatedKey = key
+        })
+    end
+    
+    return key
 end
 
 -- TODO: Get current player's database key

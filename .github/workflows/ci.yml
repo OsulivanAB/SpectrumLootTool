@@ -16,9 +16,39 @@ jobs:
     - name: Install Lua for syntax checking
       run: |
         sudo apt-get update
-        sudo apt-get install -y lua5.3
+        sudo apt-get install -y lua5.3 unzip curl
         lua -v
         luac -v
+    
+    - name: Install StyLua for code formatting
+      run: |
+        curl -L https://github.com/JohnnyMorganz/StyLua/releases/download/v2.1.0/stylua-linux-x86_64.zip -o stylua.zip
+        unzip stylua.zip
+        chmod +x stylua
+        sudo mv stylua /usr/local/bin/
+        stylua --version
+    
+    - name: Check Lua code formatting
+      run: |
+        echo "Checking Lua code formatting with StyLua..."
+        
+        # First, check if any files need formatting
+        if ! stylua --check *.lua; then
+          echo "❌ Code formatting issues detected!"
+          echo ""
+          echo "The following files need formatting. Please run 'stylua *.lua' to fix:"
+          echo ""
+          # Show the diff for better visibility
+          stylua --check *.lua || true
+          echo ""
+          echo "To fix formatting issues:"
+          echo "1. Run: stylua *.lua"
+          echo "2. Commit the formatting changes"
+          echo "3. Push the updated code"
+          exit 1
+        else
+          echo "✅ All Lua files are properly formatted"
+        fi
     
     - name: Validate Lua syntax
       run: |

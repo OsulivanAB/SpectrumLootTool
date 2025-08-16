@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 - Sync System Removal
+- **BREAKING CHANGE**: Removed entire synchronization system to prepare for fresh implementation
+- **Code Cleanup**: Removed Sync.lua file and all sync-related functionality from Core.lua
+- **Simplified Commands**: Removed sync-related slash commands (/slh syncdebug, /slh syncforce, /slh syncreq, /slh cleanup, /slh sectest)
+- **Streamlined Status**: Simplified /slh status command to show basic addon information
+- **Local Operation**: Addon now operates locally only - roll count changes are not shared between players
+- **Preparation**: Clean foundation for rebuilding sync functionality with improved architecture
+- **Note**: This version will not sync data between players - use only for testing or single-player scenarios
+
 ## 0.1.17 - Permanent Fix for Officer Arrow Visibility Bug
 - **MAJOR BUG FIX**: Completely overhauled officer detection system to permanently resolve recurring arrow visibility issues
 - **Enhanced Guild Detection**: Added fallback mechanisms when `GetGuildInfo()` returns incomplete data

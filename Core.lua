@@ -13,17 +13,8 @@ function SLH:Init()
     if self.db.settings.locked == nil then self.db.settings.locked = true end
     self.db.settings.position = self.db.settings.position or { point = "CENTER", x = 0, y = 0 }
     
-    -- Initialize WoW version for sync filtering
-    if self.Sync then
-        self.Sync:InitializeWoWVersion()
-    end
-    
     -- Recalculate values from log in case of inconsistencies
     self:RecalculateFromLog()
-    
-    if self.Sync then
-        self.Sync:Request()
-    end
     if self.CreateOptions then
         self:CreateOptions()
     end
@@ -170,10 +161,7 @@ function SLH:AdjustRoll(playerName, delta, officer)
         id = string.format("%d_%s_%s_%d", GetServerTime(), playerName, officer, newValue), -- Unique ID with value
     }
     table.insert(self.db.log, logEntry)
-    
-    if self.Sync then
-        self.Sync:Broadcast()
-    end
+
     if self.frame then
         self:UpdateRoster()
     end
@@ -208,10 +196,6 @@ frame:SetScript("OnEvent", function(_, event, arg1)
                 SLH:UpdateRoster()
             end
         end
-        -- Trigger sync when group roster changes (someone joins/leaves)
-        if event == "GROUP_ROSTER_UPDATE" and SLH.Sync and IsInRaid() then
-            SLH.Sync:Request()
-        end
     end
 end)
 
@@ -234,72 +218,6 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
         return
     end
     
-    -- Handle sync debug commands
-    if args[1] == "syncdebug" then
-        if args[2] == "off" or args[2] == "disable" then
-            SLH.debugSync = false
-            print("|cff00ff00SLH Sync Debug: DISABLED|r")
-        else
-            if SLH.Sync then
-                SLH.Sync:ToggleDebug()
-            else
-                print("|cffff0000SLH Sync module not loaded|r")
-            end
-        end
-        return
-    end
-    
-    -- Handle sync force broadcast
-    if args[1] == "syncforce" or (args[1] == "sync" and args[2] == "force") then
-        if SLH.Sync then
-            SLH.Sync:ForceBroadcast()
-        else
-            print("|cffff0000SLH Sync module not loaded|r")
-        end
-        return
-    end
-    
-    -- Handle sync request
-    if args[1] == "syncreq" or (args[1] == "sync" and args[2] == "request") then
-        if SLH.Sync then
-            local success = SLH.Sync:RequestLog()
-            print("|cff00ff00SLH: Sync request " .. (success and "sent" or "failed") .. "|r")
-        else
-            print("|cffff0000SLH Sync module not loaded|r")
-        end
-        return
-    end
-    
-    -- Handle log cleanup command
-    if args[1] == "cleanup" or args[1] == "cleanlogs" then
-        if SLH.Sync then
-            local before = #SLH.db.log
-            local removed = 0
-            local currentTime = time()
-            
-            -- Remove logs older than retention period and from different WoW versions
-            SLH.Sync:InitializeWoWVersion()
-            local newLog = {}
-            
-            for _, entry in ipairs(SLH.db.log) do
-                if SLH.Sync:IsEntryRelevant(entry) then
-                    table.insert(newLog, entry)
-                else
-                    removed = removed + 1
-                end
-            end
-            
-            SLH.db.log = newLog
-            print(string.format("|cff00ff00SLH: Cleaned up %d old log entries (%d remaining)|r", removed, #SLH.db.log))
-            
-            -- Recalculate after cleanup
-            SLH:RecalculateFromLog()
-        else
-            print("|cffff0000SLH Sync module not loaded|r")
-        end
-        return
-    end
-    
     -- Handle refresh command
     if args[1] == "refresh" or args[1] == "reload" then
         SLH:RefreshOfficerStatus()
@@ -314,40 +232,9 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
         print("|cff00ff00Guild: " .. (guild or "None") .. "|r")
         print("|cff00ff00Officer: " .. tostring(isOfficer) .. "|r")
         print("|cff00ff00Version: " .. SLH.version .. "|r")
-        if SLH.Sync then
-            print("|cff00ff00Sync Version: " .. SLH.Sync.version .. "|r")
-            
-            -- Initialize WoW version and show sync stats
-            SLH.Sync:InitializeWoWVersion()
-            print("|cff00ff00WoW Version: " .. (SLH.Sync.currentWoWVersion or "unknown") .. "|r")
-            
-            if SLH.db and SLH.db.log then
-                local totalEntries = #SLH.db.log
-                local relevantEntries = 0
-                
-                for _, entry in ipairs(SLH.db.log) do
-                    if SLH.Sync:IsEntryRelevant(entry) then
-                        relevantEntries = relevantEntries + 1
-                    end
-                end
-                
-                print("|cff00ff00Log Entries: " .. relevantEntries .. "/" .. totalEntries .. " (relevant/total)|r")
-            end
-        end
-        return
-    end
-    
-    -- Handle security test command (debug only)
-    if args[1] == "sectest" and args[2] then
-        if SLH.Sync then
-            local testPlayer = args[2]
-            local isValid = SLH.Sync:IsValidSender(testPlayer)
-            local isOfficer = SLH.Sync:IsOfficerSender(testPlayer)
-            print("|cff00ff00=== Security Test for " .. testPlayer .. " ===|r")
-            print("|cff00ff00Valid Sender: " .. tostring(isValid) .. "|r")
-            print("|cff00ff00Officer Sender: " .. tostring(isOfficer) .. "|r")
-        else
-            print("|cffff0000SLH Sync module not loaded|r")
+        if SLH.db and SLH.db.log then
+            local totalEntries = #SLH.db.log
+            print("|cff00ff00Log Entries: " .. totalEntries .. "|r")
         end
         return
     end
@@ -358,11 +245,6 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
         print("|cff00ff00/slh - Toggle main window|r")
         print("|cff00ff00/slh status - Show addon status|r")
         print("|cff00ff00/slh debug - Toggle officer debug|r")
-        print("|cff00ff00/slh syncdebug - Toggle sync debug|r")
-        print("|cff00ff00/slh syncforce - Force broadcast sync|r")
-        print("|cff00ff00/slh syncreq - Request sync from raid|r")
-        print("|cff00ff00/slh cleanup - Clean old log entries|r")
-        print("|cff00ff00/slh sectest <player> - Test security for player|r")
         print("|cff00ff00/slh refresh - Refresh officer status|r")
         return
     end

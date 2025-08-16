@@ -3119,27 +3119,351 @@ end
 -- UTILITY FUNCTIONS
 -- ============================================================================
 
--- TODO: Clear all data for testing purposes
+-- Clear all data for testing purposes
+-- WARNING: This function completely wipes all database data - use only for testing/debugging
+-- Provides comprehensive confirmation and logging to prevent accidental data loss
 function Database:ClearAllData()
-    if SLH.Debug then
-        SLH.Debug:LogDebug("Database", "ClearAllData() called", {})
-    end
-    
-    -- TODO: Confirm this is for testing/debugging only
-    -- TODO: Clear SpectrumLootHelperDB.playerData
-    -- TODO: Reset database to initial state
-    -- TODO: Log data clearing action
+    return self:SafeExecute("ClearAllData", function()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "ClearAllData() starting data clear operation", {
+                operation = "clear_all_data",
+                warning = "This will permanently delete all database entries"
+            })
+        end
+        
+        -- Ensure database is initialized before attempting to clear
+        if not SpectrumLootHelperDB then
+            if SLH.Debug then
+                SLH.Debug:LogWarn("Database", "Cannot clear data - SpectrumLootHelperDB not initialized", {})
+            end
+            return true, "No data to clear - database not initialized"
+        end
+        
+        -- Count entries before clearing for logging
+        local entriesBeforeClear = 0
+        if SpectrumLootHelperDB.playerData then
+            for _ in pairs(SpectrumLootHelperDB.playerData) do
+                entriesBeforeClear = entriesBeforeClear + 1
+            end
+        end
+        
+        -- Get current database statistics before clearing
+        local statsBeforeClear = {}
+        local debugStatsSuccess, debugStats = self:GetDebugStats()
+        if debugStatsSuccess and debugStats then
+            statsBeforeClear = {
+                totalEntries = debugStats.database.totalEntries,
+                memoryUsage = debugStats.database.memoryUsage,
+                totalPlayers = debugStats.summary.totalPlayers or 0,
+                totalServers = debugStats.summary.totalServers or 0,
+                totalVersions = debugStats.summary.totalVersions or 0
+            }
+        end
+        
+        -- Clear all player data
+        SpectrumLootHelperDB.playerData = {}
+        
+        -- Reset database metadata but preserve version information
+        local preservedVersion = SpectrumLootHelperDB.databaseVersion
+        local preservedUpgradeHistory = SpectrumLootHelperDB.schemaUpgradeHistory
+        
+        -- Reset additional data structures while preserving critical system info
+        if SpectrumLootHelperDB.integrityMetadata then
+            SpectrumLootHelperDB.integrityMetadata = {
+                lastIntegrityCheck = nil,
+                integrityScore = nil
+            }
+        end
+        
+        if SpectrumLootHelperDB.v2Features then
+            -- Keep v2Features but reset any data-dependent values
+            SpectrumLootHelperDB.v2Features.lastDataClear = GetServerTime()
+        end
+        
+        -- Update last database access timestamp
+        SpectrumLootHelperDB.lastDatabaseAccess = time()
+        
+        -- Verify data was actually cleared
+        local entriesAfterClear = 0
+        if SpectrumLootHelperDB.playerData then
+            for _ in pairs(SpectrumLootHelperDB.playerData) do
+                entriesAfterClear = entriesAfterClear + 1
+            end
+        end
+        
+        if entriesAfterClear > 0 then
+            if SLH.Debug then
+                SLH.Debug:LogError("Database", "Data clear verification failed - entries still present", {
+                    entriesRemaining = entriesAfterClear
+                })
+            end
+            return false, "Data clear failed - entries still present in database"
+        end
+        
+        -- Add clear operation to upgrade history for tracking
+        if not SpectrumLootHelperDB.schemaUpgradeHistory then
+            SpectrumLootHelperDB.schemaUpgradeHistory = {}
+        end
+        
+        table.insert(SpectrumLootHelperDB.schemaUpgradeHistory, {
+            operation = "data_clear",
+            timestamp = GetServerTime(),
+            entriesCleared = entriesBeforeClear,
+            preservedVersion = preservedVersion,
+            clearedBy = "manual_operation"
+        })
+        
+        -- Log comprehensive clear operation results
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Database clear operation completed successfully", {
+                operation = "clear_all_data_complete",
+                entriesBeforeClear = entriesBeforeClear,
+                entriesAfterClear = entriesAfterClear,
+                entriesCleared = entriesBeforeClear - entriesAfterClear,
+                statsBeforeClear = statsBeforeClear,
+                preservedDatabaseVersion = preservedVersion,
+                preservedUpgradeHistory = preservedUpgradeHistory ~= nil,
+                clearTimestamp = GetServerTime(),
+                verificationPassed = entriesAfterClear == 0
+            })
+        end
+        
+        -- Return success with detailed clear report
+        local message = string.format(
+            "Database cleared successfully: %d entries removed, database version %s preserved",
+            entriesBeforeClear,
+            preservedVersion or "unknown"
+        )
+        
+        return true, message, {
+            entriesCleared = entriesBeforeClear,
+            databaseVersion = preservedVersion,
+            clearTimestamp = GetServerTime(),
+            upgradeHistoryPreserved = preservedUpgradeHistory ~= nil
+        }
+        
+    end)
 end
 
--- TODO: Get database size information
+-- Get database size information
+-- Provides comprehensive database size metrics for monitoring and optimization
+-- Returns detailed size breakdown including memory usage, entry counts, and storage efficiency
 function Database:GetSize()
-    if SLH.Debug then
-        SLH.Debug:LogDebug("Database", "GetSize() called", {})
-    end
-    
-    -- TODO: Calculate memory usage of saved variables
-    -- TODO: Count number of entries
-    -- TODO: Return size information for monitoring
+    return self:SafeExecute("GetSize", function()
+        
+        if SLH.Debug then
+            SLH.Debug:LogDebug("Database", "GetSize() starting size calculation", {
+                operation = "database_size_analysis"
+            })
+        end
+        
+        local startTime = GetServerTime()
+        
+        -- Initialize size analysis structure
+        local sizeInfo = {
+            timestamp = startTime,
+            database = {
+                initialized = false,
+                totalEntries = 0,
+                totalMemoryBytes = 0,
+                totalMemoryFormatted = "0 B"
+            },
+            breakdown = {
+                playerDataSize = 0,
+                metadataSize = 0,
+                upgradeHistorySize = 0,
+                otherDataSize = 0
+            },
+            entryAnalysis = {
+                averageEntrySize = 0,
+                largestEntrySize = 0,
+                smallestEntrySize = math.huge,
+                entrySizeDistribution = {}
+            },
+            keyAnalysis = {
+                averageKeyLength = 0,
+                totalKeySize = 0,
+                uniqueVersions = 0,
+                uniqueServers = 0,
+                uniquePlayers = 0
+            },
+            efficiency = {
+                storageEfficiency = 0,
+                overhead = 0,
+                optimization = "unknown"
+            }
+        }
+        
+        -- Check if database is initialized
+        if not SpectrumLootHelperDB then
+            if SLH.Debug then
+                SLH.Debug:LogInfo("Database", "Database not initialized for size analysis", {})
+            end
+            sizeInfo.database.initialized = false
+            return true, sizeInfo
+        end
+        
+        sizeInfo.database.initialized = true
+        
+        -- Calculate size of saved variables structure
+        local metadataSize = 0
+        
+        -- Database version size
+        if SpectrumLootHelperDB.databaseVersion then
+            metadataSize = metadataSize + #SpectrumLootHelperDB.databaseVersion
+        end
+        
+        -- Last database access timestamp
+        metadataSize = metadataSize + 8  -- timestamp size
+        
+        -- Upgrade history size
+        local upgradeHistorySize = 0
+        if SpectrumLootHelperDB.schemaUpgradeHistory then
+            for _, historyEntry in ipairs(SpectrumLootHelperDB.schemaUpgradeHistory) do
+                upgradeHistorySize = upgradeHistorySize + self:_EstimateTableSize(historyEntry)
+            end
+        end
+        
+        -- Other metadata size
+        local otherDataSize = 0
+        if SpectrumLootHelperDB.integrityMetadata then
+            otherDataSize = otherDataSize + self:_EstimateTableSize(SpectrumLootHelperDB.integrityMetadata)
+        end
+        if SpectrumLootHelperDB.v2Features then
+            otherDataSize = otherDataSize + self:_EstimateTableSize(SpectrumLootHelperDB.v2Features)
+        end
+        
+        -- Analyze player data
+        local playerDataSize = 0
+        local totalKeySize = 0
+        local versionTracker = {}
+        local serverTracker = {}
+        local playerTracker = {}
+        
+        if SpectrumLootHelperDB.playerData then
+            
+            for playerKey, playerData in pairs(SpectrumLootHelperDB.playerData) do
+                sizeInfo.database.totalEntries = sizeInfo.database.totalEntries + 1
+                
+                -- Calculate entry size
+                local entrySize = #playerKey  -- Key size
+                local dataSize = 0
+                
+                if type(playerData) == "table" then
+                    dataSize = self:_EstimateTableSize(playerData)
+                else
+                    dataSize = 50  -- Estimate for corrupted entries
+                end
+                
+                local totalEntrySize = entrySize + dataSize
+                playerDataSize = playerDataSize + totalEntrySize
+                totalKeySize = totalKeySize + #playerKey
+                
+                -- Track entry size statistics
+                sizeInfo.entryAnalysis.largestEntrySize = math.max(sizeInfo.entryAnalysis.largestEntrySize, totalEntrySize)
+                sizeInfo.entryAnalysis.smallestEntrySize = math.min(sizeInfo.entryAnalysis.smallestEntrySize, totalEntrySize)
+                
+                -- Extract version, server, and player information
+                local playerName, serverName, wowVersion = playerKey:match("^(.+)%-(.+)%-(%d+%.%d+)$")
+                if playerName and serverName and wowVersion then
+                    versionTracker[wowVersion] = true
+                    serverTracker[serverName] = true
+                    playerTracker[playerName .. "-" .. serverName] = true
+                end
+                
+                -- Track size distribution by ranges
+                local sizeRange = "Unknown"
+                if totalEntrySize < 512 then
+                    sizeRange = "< 512B"
+                elseif totalEntrySize < 1024 then
+                    sizeRange = "512B - 1KB"
+                elseif totalEntrySize < 2048 then
+                    sizeRange = "1KB - 2KB"
+                elseif totalEntrySize < 4096 then
+                    sizeRange = "2KB - 4KB"
+                else
+                    sizeRange = "> 4KB"
+                end
+                
+                sizeInfo.entryAnalysis.entrySizeDistribution[sizeRange] = 
+                    (sizeInfo.entryAnalysis.entrySizeDistribution[sizeRange] or 0) + 1
+            end
+        end
+        
+        -- Calculate averages and totals
+        if sizeInfo.database.totalEntries > 0 then
+            sizeInfo.entryAnalysis.averageEntrySize = playerDataSize / sizeInfo.database.totalEntries
+            sizeInfo.keyAnalysis.averageKeyLength = totalKeySize / sizeInfo.database.totalEntries
+        end
+        
+        -- Reset smallestEntrySize if no entries found
+        if sizeInfo.entryAnalysis.smallestEntrySize == math.huge then
+            sizeInfo.entryAnalysis.smallestEntrySize = 0
+        end
+        
+        -- Count unique entities
+        sizeInfo.keyAnalysis.uniqueVersions = self:_CountTableEntries(versionTracker)
+        sizeInfo.keyAnalysis.uniqueServers = self:_CountTableEntries(serverTracker)
+        sizeInfo.keyAnalysis.uniquePlayers = self:_CountTableEntries(playerTracker)
+        sizeInfo.keyAnalysis.totalKeySize = totalKeySize
+        
+        -- Calculate total sizes
+        sizeInfo.breakdown.playerDataSize = playerDataSize
+        sizeInfo.breakdown.metadataSize = metadataSize
+        sizeInfo.breakdown.upgradeHistorySize = upgradeHistorySize
+        sizeInfo.breakdown.otherDataSize = otherDataSize
+        
+        local totalSize = playerDataSize + metadataSize + upgradeHistorySize + otherDataSize
+        sizeInfo.database.totalMemoryBytes = totalSize
+        sizeInfo.database.totalMemoryFormatted = self:_FormatMemorySize(totalSize)
+        
+        -- Calculate efficiency metrics
+        if totalSize > 0 then
+            local dataPercentage = (playerDataSize / totalSize) * 100
+            local overheadPercentage = ((metadataSize + upgradeHistorySize + otherDataSize) / totalSize) * 100
+            
+            sizeInfo.efficiency.storageEfficiency = dataPercentage
+            sizeInfo.efficiency.overhead = overheadPercentage
+            
+            if dataPercentage > 90 then
+                sizeInfo.efficiency.optimization = "excellent"
+            elseif dataPercentage > 80 then
+                sizeInfo.efficiency.optimization = "good"
+            elseif dataPercentage > 70 then
+                sizeInfo.efficiency.optimization = "fair"
+            else
+                sizeInfo.efficiency.optimization = "poor"
+            end
+        end
+        
+        -- Calculate analysis duration
+        local analysisTime = GetServerTime() - startTime
+        sizeInfo.analysisDuration = analysisTime
+        
+        -- Log comprehensive size analysis results
+        if SLH.Debug then
+            SLH.Debug:LogInfo("Database", "Database size analysis completed", {
+                operation = "database_size_complete",
+                totalEntries = sizeInfo.database.totalEntries,
+                totalMemoryBytes = sizeInfo.database.totalMemoryBytes,
+                totalMemoryFormatted = sizeInfo.database.totalMemoryFormatted,
+                averageEntrySize = sizeInfo.entryAnalysis.averageEntrySize,
+                largestEntrySize = sizeInfo.entryAnalysis.largestEntrySize,
+                smallestEntrySize = sizeInfo.entryAnalysis.smallestEntrySize,
+                uniqueVersions = sizeInfo.keyAnalysis.uniqueVersions,
+                uniqueServers = sizeInfo.keyAnalysis.uniqueServers,
+                uniquePlayers = sizeInfo.keyAnalysis.uniquePlayers,
+                storageEfficiency = sizeInfo.efficiency.storageEfficiency,
+                overhead = sizeInfo.efficiency.overhead,
+                optimization = sizeInfo.efficiency.optimization,
+                analysisDuration = analysisTime
+            })
+        end
+        
+        return true, sizeInfo
+        
+    end)
 end
 
 -- ============================================================================

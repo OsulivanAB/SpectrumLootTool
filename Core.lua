@@ -13,6 +13,11 @@ function SLH:Init()
     if self.db.settings.locked == nil then self.db.settings.locked = true end
     self.db.settings.position = self.db.settings.position or { point = "CENTER", x = 0, y = 0 }
     
+    -- Initialize log system
+    if self.Log then
+        self.Log:Init()
+    end
+    
     -- Recalculate values from log in case of inconsistencies
     self:RecalculateFromLog()
     if self.CreateOptions then

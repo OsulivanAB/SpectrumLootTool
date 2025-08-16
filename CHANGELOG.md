@@ -7,6 +7,8 @@
 - **Streamlined Status**: Simplified /slh status command to show basic addon information
 - **Local Operation**: Addon now operates locally only - roll count changes are not shared between players
 - **Preparation**: Clean foundation for rebuilding sync functionality with improved architecture
+- **New Log Module**: Added Log.lua placeholder file for future log management system
+- **Architecture**: Structured log system with WoW version tracking, entry validation, and future sync compatibility
 - **Note**: This version will not sync data between players - use only for testing or single-player scenarios
 
 ## 0.1.17 - Permanent Fix for Officer Arrow Visibility Bug

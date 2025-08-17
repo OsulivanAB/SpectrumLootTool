@@ -1,0 +1,125 @@
+name: ✨ Feature Request
+description: Suggest an idea or enhancement for SpectrumLootTool
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request Guidelines
+        Help us understand your feature request by providing detailed information below.
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: Describe the feature you'd like to see
+      placeholder: A clear and concise description of what you want to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-use-case
+    attributes:
+      label: Problem/Use Case
+      description: What problem does this solve?
+      placeholder: Explain the problem you're trying to solve or the use case this feature would address
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: How would you like this to work?
+      placeholder: Describe your ideal solution or how you envision this feature working
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternative-solutions
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered other approaches?
+      placeholder: Describe any alternative solutions or features you've considered
+
+  - type: checkboxes
+    id: guild-context
+    attributes:
+      label: Guild Context
+      description: Select all that apply to your feature request
+      options:
+        - label: This would affect officer-only features
+        - label: This is specific to "Spectrum Federation" guild functionality
+        - label: This should be a general feature for any guild
+        - label: This integrates with existing loot distribution
+        - label: This requires new UI elements
+        - label: This involves slash commands
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature to you?
+      options:
+        - Critical - Blocks current workflow
+        - High - Would significantly improve experience
+        - Medium - Nice to have improvement
+        - Low - Minor convenience
+    validations:
+      required: true
+
+  - type: dropdown
+    id: user-type
+    attributes:
+      label: User Type
+      description: What type of user would benefit from this feature?
+      options:
+        - Guild Officers only
+        - Guild Members only
+        - Both Officers and Members
+        - Any WoW player (general feature)
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples and References
+      description: Provide examples from other addons, screenshots, or mockups
+      placeholder: |
+        - Examples from other addons
+        - Screenshots or mockups
+        - Links to related discussions
+        - Similar features you've seen elsewhere
+
+  - type: textarea
+    id: technical-considerations
+    attributes:
+      label: Technical Considerations
+      description: Any technical aspects to consider?
+      placeholder: |
+        - Performance impact concerns
+        - Compatibility with other addons
+        - Data storage requirements
+        - Network/sync implications
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+      placeholder: Add any other context, details, or considerations about this feature request
+
+  - type: checkboxes
+    id: acknowledgment
+    attributes:
+      label: Acknowledgment
+      description: Please confirm your understanding
+      options:
+        - label: I understand this is a feature request and not a bug report
+          required: true
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+        - label: I have provided sufficient detail for evaluation
+          required: true

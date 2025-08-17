@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.4 - Enhanced Issue Reporting System
+
+### ✨ **New Features**
+- **GitHub Issue Forms**: Converted all issue templates from markdown to interactive GitHub forms
+- **Structured Bug Reports**: New form-based bug reporting with required fields and validation
+- **Enhanced Feature Requests**: Improved feature request form with priority levels and context categories
+- **Streamlined Support**: Redesigned support form with self-help checklist and common solutions
+
+### 🔧 **Technical Improvements**
+- **Form Validation**: Added required field validation to ensure complete bug reports
+- **Debug Log Integration**: Mandatory debug logs section in bug reports with clear instructions
+- **User Experience**: Dropdown selections, checkboxes, and structured input fields for better data collection
+- **Issue Routing**: Improved categorization and labeling for faster issue resolution
+
+### 🎯 **User Experience**
+- **Self-Service Support**: Built-in troubleshooting steps and common solutions in support template
+- **Clear Instructions**: Step-by-step debug log collection guide in bug reports
+- **Comprehensive Context**: Enhanced form fields capture system info, guild context, and technical details
+- **Quality Assurance**: Required acknowledgment checkboxes ensure users understand submission requirements
+
 ## 0.3.3 - Show All Known Players Feature
 
 ### ✨ **New Features**

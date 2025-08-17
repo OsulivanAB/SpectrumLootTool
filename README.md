@@ -141,6 +141,10 @@ For detailed development setup, see `.devcontainer/local_tasks_guide.md`.
 - **Guild**: Optimized for Spectrum Federation (Garona-US)
 - **Installation Methods**: WowUp, Manual, CurseForge compatible
 
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 ## 🤝 Support
 
 - **Issues**: Report bugs via [GitHub Issues](https://github.com/OsulivanAB/SpectrumLootTool/issues)

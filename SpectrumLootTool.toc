@@ -5,6 +5,9 @@
 ## Version: 0.3.3
 ## SavedVariables: SpectrumLootHelperDB
 ## IconTexture: Interface\AddOns\SpectrumLootTool\icon
+## X-License: MIT
+## X-Website: https://github.com/OsulivanAB/SpectrumLootTool
+## X-Curse-Project-ID: SpectrumLootTool
 
 Core.lua
 Database.lua

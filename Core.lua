@@ -30,6 +30,17 @@ function SLH:Init()
 		self.Debug:Init()
 		self.Debug:StartSession()
 		self.Debug:LogInfo("Core", "Addon initialized", { version = self.version })
+	end
+
+	-- Initialize logging system (audit logging)
+	if self.Logging then
+		local logInitSuccess = self.Logging:Init()
+		if self.Debug then
+			self.Debug:LogInfo("Core", "Logging system initialization result", { 
+				success = logInitSuccess,
+				version = self.Logging.version 
+			})
+		end
 		self.Debug:LogInfo("Core", "Debug system fully implemented with performance optimization", {
 			coreTests = { "/slh debuglog test core", "/slh debuglog test perf" },
 			uiTests = { "/slh debuglog test ui", "/slh debuglog test workflow" },

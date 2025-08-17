@@ -18,7 +18,6 @@ Get help with SpectrumLootTool installation, configuration, and troubleshooting.
 - **[Quick Start](quick-start.md)** - Essential commands and features
 - **[User Guide](user-guide/basic-usage.md)** - Comprehensive usage instructions
 - **[Configuration](configuration.md)** - All settings and customization options
-- **[Troubleshooting](user-guide/troubleshooting.md)** - Common issues and solutions
 
 ### Technical Documentation
 - **[API Reference](api-reference.md)** - For developers and advanced users

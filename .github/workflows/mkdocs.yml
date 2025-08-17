@@ -35,9 +35,6 @@ jobs:
           mkdocs-material \
           mkdocs-minify-plugin \
           mkdocs-git-revision-date-localized-plugin \
-          mkdocs-git-committers-plugin-2 \
-          mkdocs-social-plugin \
-          mkdocs-tags-plugin \
           mkdocs-glightbox \
           pillow \
           cairosvg
@@ -82,9 +79,6 @@ jobs:
           mkdocs-material \
           mkdocs-minify-plugin \
           mkdocs-git-revision-date-localized-plugin \
-          mkdocs-git-committers-plugin-2 \
-          mkdocs-social-plugin \
-          mkdocs-tags-plugin \
           mkdocs-glightbox \
           pillow \
           cairosvg
@@ -96,10 +90,3 @@ jobs:
     
     - name: Deploy to GitHub Pages
       run: mkdocs gh-deploy --force
-        id: deployment
-        uses: actions/deploy-pages@v4
-        
-      - name: Post-deployment validation
-        run: |
-          echo "✅ MkDocs successfully deployed to GitHub Pages"
-          echo "🌐 Documentation URL: ${{ steps.deployment.outputs.page_url }}"

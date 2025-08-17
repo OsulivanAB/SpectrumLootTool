@@ -192,9 +192,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Contributing
 
-See our [Contributing Guide](development/contributing.md) for information about:
+See our documentation for information about:
 - Bug reports and feature requests
-- Development setup and guidelines
+- Development setup and guidelines  
 - Code contribution process
 - Testing procedures
 

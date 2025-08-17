@@ -228,9 +228,8 @@ For optimal performance:
 Now that you have the basics down:
 
 - **[User Guide](user-guide/basic-usage.md)** - Comprehensive feature documentation
-- **[Officer Controls](user-guide/officer-controls.md)** - Advanced officer features
-- **[Settings](user-guide/settings.md)** - Detailed configuration options
-- **[Troubleshooting](user-guide/troubleshooting.md)** - Common issues and solutions
+- **[Configuration](configuration.md)** - Detailed configuration options
+- **[Support](support.md)** - Common issues and solutions
 
 ---
 

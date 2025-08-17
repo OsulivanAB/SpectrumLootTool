@@ -27,9 +27,6 @@ jobs:
           mkdocs-material \
           mkdocs-minify-plugin \
           mkdocs-git-revision-date-localized-plugin \
-          mkdocs-git-committers-plugin-2 \
-          mkdocs-social-plugin \
-          mkdocs-tags-plugin \
           mkdocs-glightbox \
           pillow \
           cairosvg

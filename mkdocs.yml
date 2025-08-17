@@ -87,19 +87,10 @@ nav:
     - Configuration: configuration.md
   - User Guide:
     - Basic Usage: user-guide/basic-usage.md
-    - Officer Controls: user-guide/officer-controls.md
-    - Settings: user-guide/settings.md
-    - Troubleshooting: user-guide/troubleshooting.md
   - Technical:
     - Database System: database.md
     - Debug System: debug.md
     - API Reference: api-reference.md
-    - Architecture: technical/architecture.md
-  - Development:
-    - Contributing: development/contributing.md
-    - Development Setup: development/setup.md
-    - Code Standards: development/standards.md
-    - Testing: development/testing.md
   - About:
     - Changelog: changelog.md
     - Support: support.md
@@ -141,9 +132,7 @@ markdown_extensions:
       repo: SpectrumLootTool
   - pymdownx.mark
   - pymdownx.smartsymbols
-  - pymdownx.snippets:
-      auto_append:
-        - includes/mkdocs.md
+  - pymdownx.snippets
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -168,15 +157,6 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: true
       type: timeago
-  - git-committers:
-      repository: OsulivanAB/SpectrumLootTool
-      branch: main
-  - social:
-      cards_layout_options:
-        background_color: "#1e293b"
-        color: "#ffffff"
-  - tags:
-      tags_file: tags.md
   - glightbox:
       touchNavigation: true
       loop: false
@@ -202,9 +182,6 @@ extra:
     - icon: fontawesome/solid/download
       link: https://github.com/OsulivanAB/SpectrumLootTool/releases
       name: Download Latest Release
-    - icon: simple/worldofwarcraft
-      link: https://worldofwarcraft.com
-      name: World of Warcraft
   
   # Analytics (optional)
   analytics:

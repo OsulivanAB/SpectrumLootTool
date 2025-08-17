@@ -22,12 +22,19 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install mkdocs mkdocs-material mkdocs-awesome-pages-plugin
+          pip install \
+            mkdocs \
+            mkdocs-material \
+            mkdocs-minify-plugin \
+            mkdocs-git-revision-date-localized-plugin \
+            mkdocs-glightbox \
+            pillow \
+            cairosvg
 
       - name: Test MkDocs build
         run: |
           echo "Testing MkDocs build for PR validation..."
-          mkdocs build --verbose
+          mkdocs build --strict
 
       - name: Validate build output
         run: |

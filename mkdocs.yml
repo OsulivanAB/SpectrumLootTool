@@ -2,3 +2,4 @@ site_name: Spectrum Loot Helper
 nav:
   - Home: index.md
   - Database System: database.md
+  - Debug System: debug.md

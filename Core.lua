@@ -1,6 +1,6 @@
 local ADDON_NAME, SLH = ...
 
-SLH.version = "0.3.2"
+SLH.version = "0.3.3"
 SLH.OFFICER_RANK = 2 -- configurable officer rank threshold
 
 -- Initialize saved variables and basic database
@@ -14,6 +14,9 @@ function SLH:Init()
 	end
 	if self.db.settings.locked == nil then
 		self.db.settings.locked = true
+	end
+	if self.db.settings.showAllPlayers == nil then
+		self.db.settings.showAllPlayers = false
 	end
 	self.db.settings.position = self.db.settings.position or { point = "CENTER", x = 0, y = 0 }
 
@@ -552,4 +555,63 @@ SlashCmdList["SPECTRUMLOOTHELPER"] = function(msg)
 		f:Show()
 		SLH:UpdateRoster()
 	end
+end
+
+-- Get all known players from the database
+function SLH:GetAllKnownPlayers()
+	self.Debug:LogDebug("Core", "Getting all known players from database", {})
+
+	if not SpectrumLootHelperDB or not SpectrumLootHelperDB.playerData then
+		self.Debug:LogWarn("Core", "No database or player data available", {})
+		return {}
+	end
+
+	local players = {}
+	local playerMap = {} -- Track unique players across different servers/versions
+
+	for key, entry in pairs(SpectrumLootHelperDB.playerData) do
+		-- Extract player name and server from key format: "PlayerName-ServerName-Version"
+		local playerName, serverName = key:match("^([^%-]+)%-([^%-]+)%-")
+
+		if playerName and serverName then
+			local fullName = playerName .. "-" .. serverName
+
+			-- Only add if we haven't seen this player-server combination yet
+			if not playerMap[fullName] then
+				playerMap[fullName] = true
+
+				-- Try to get class from entry data
+				local classFile = entry.Class or "UNKNOWN"
+
+				table.insert(players, {
+					name = fullName,
+					class = classFile,
+				})
+
+				self.Debug:LogDebug("Core", "Added known player to list", {
+					playerName = playerName,
+					serverName = serverName,
+					fullName = fullName,
+					class = classFile,
+				})
+			end
+		else
+			self.Debug:LogWarn("Core", "Could not parse player key", {
+				key = key,
+			})
+		end
+	end
+
+	-- Sort players alphabetically by name
+	table.sort(players, function(a, b)
+		return a.name < b.name
+	end)
+
+	self.Debug:LogInfo("Core", "Retrieved all known players", {
+		totalPlayers = #players,
+		firstFew = players[1] and { players[1].name, players[2] and players[2].name, players[3] and players[3].name }
+			or {},
+	})
+
+	return players
 end

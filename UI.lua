@@ -89,7 +89,16 @@ function SLH:UpdateRoster()
 	end
 
 	local players = {}
-	if IsInRaid() then
+	local useAllPlayers = self.db.settings.showAllPlayers
+
+	if useAllPlayers then
+		-- Show all known players from database
+		players = self:GetAllKnownPlayers()
+		self.Debug:LogDebug("UI", "Using all known players from database", {
+			playerCount = #players,
+			showAllPlayers = useAllPlayers,
+		})
+	elseif IsInRaid() then
 		local raidSize = GetNumGroupMembers()
 		self.Debug:LogDebug("UI", "Updating roster for raid group", {
 			groupType = "raid",
@@ -223,7 +232,9 @@ function SLH:UpdateRoster()
 		visiblePlayers = #players,
 		hiddenRows = hiddenCount,
 		newFrameHeight = newHeight,
-		groupType = IsInRaid() and "raid" or (IsInGroup() and "party" or "solo"),
+		groupType = useAllPlayers and "all-known-players"
+			or (IsInRaid() and "raid" or (IsInGroup() and "party" or "solo")),
+		showAllPlayers = useAllPlayers,
 	})
 end
 
@@ -282,6 +293,28 @@ function SLH:CreateOptions()
 		})
 	end)
 
+	local showAllPlayersCheckbox = CreateFrame("CheckButton", nil, panel, "InterfaceOptionsCheckButtonTemplate")
+	showAllPlayersCheckbox:SetPoint("TOPLEFT", lockCheckbox, "BOTTOMLEFT", 0, -8)
+	showAllPlayersCheckbox.Text:SetText("Show all known players (not just current group)")
+	showAllPlayersCheckbox:SetChecked(self.db.settings.showAllPlayers)
+	showAllPlayersCheckbox:SetScript("OnClick", function(btn)
+		local newValue = btn:GetChecked()
+		local oldValue = SLH.db.settings.showAllPlayers
+		SLH.db.settings.showAllPlayers = newValue
+
+		self.Debug:LogInfo("UI", "Show all players setting changed", {
+			oldValue = oldValue,
+			newValue = newValue,
+			frameExists = SLH.frame ~= nil,
+		})
+
+		-- Refresh the roster display immediately to show the change
+		if SLH.frame and SLH:IsEnabled() then
+			SLH:UpdateRoster()
+			self.Debug:LogDebug("UI", "Roster refreshed due to show all players setting change", {})
+		end
+	end)
+
 	self.optionsPanel = panel
 
 	-- Register with appropriate settings system based on WoW version
@@ -301,5 +334,6 @@ function SLH:CreateOptions()
 	self.Debug:LogInfo("UI", "Options panel created successfully", {
 		allowOutsideRaid = self.db.settings.allowOutsideRaid,
 		locked = self.db.settings.locked,
+		showAllPlayers = self.db.settings.showAllPlayers,
 	})
 end

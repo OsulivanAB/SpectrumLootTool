@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.3 - Show All Known Players Feature
+
+### ✨ **New Features**
+- **Show All Players Setting**: Added option to display all known players from the database instead of just current party/raid members
+- **Comprehensive Player List**: View all players who have been tracked by the addon across different sessions
+- **Enhanced Settings Panel**: New checkbox option "Show all known players (not just current group)" in addon settings
+
+### 🔧 **Technical Improvements**
+- Added `GetAllKnownPlayers()` function to retrieve unique players from database across servers and versions
+- Enhanced `UpdateRoster()` function to support both group-only and all-players display modes
+- Improved debug logging to track roster display mode changes
+- Added automatic roster refresh when toggling the show all players setting
+
+### 🎯 **User Experience**
+- Players can now see historical loot data for all guild members, not just those currently online
+- Setting is persistently saved and applies immediately when changed
+- Maintains existing functionality when disabled (default behavior)
+
 ## 0.3.2 - GitHub Pages Documentation Deployment
 
 ### 🚀 **Infrastructure**

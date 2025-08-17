@@ -1,5 +1,244 @@
-site_name: Spectrum Loot Helper
+site_name: Spectrum Loot Tool
+site_description: A comprehensive loot distribution and tracking addon for World of Warcraft
+site_author: Spectrum Federation
+site_url: https://osulivanab.github.io/SpectrumLootTool/
+
+# Repository information
+repo_name: OsulivanAB/SpectrumLootTool
+repo_url: https://github.com/OsulivanAB/SpectrumLootTool
+edit_uri: edit/main/docs/
+
+# Theme configuration with Material Design
+theme:
+  name: material
+  language: en
+  
+  # Color scheme
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  
+  # Features
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.tabs.link
+    - content.tooltips
+    - header.autohide
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - toc.integrate
+
+  # Fonts
+  font:
+    text: Roboto
+    code: Roboto Mono
+  
+  # Favicon and logo
+  favicon: assets/favicon.png
+  logo: assets/logo.png
+  
+  # Icon overrides
+  icon:
+    logo: material/gamepad-variant
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+# Navigation structure
 nav:
   - Home: index.md
-  - Database System: database.md
-  - Debug System: debug.md
+  - Getting Started:
+    - Installation: installation.md
+    - Quick Start: quick-start.md
+    - Configuration: configuration.md
+  - User Guide:
+    - Basic Usage: user-guide/basic-usage.md
+    - Officer Controls: user-guide/officer-controls.md
+    - Settings: user-guide/settings.md
+    - Troubleshooting: user-guide/troubleshooting.md
+  - Technical:
+    - Database System: database.md
+    - Debug System: debug.md
+    - API Reference: api-reference.md
+    - Architecture: technical/architecture.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Development Setup: development/setup.md
+    - Code Standards: development/standards.md
+    - Testing: development/testing.md
+  - About:
+    - Changelog: changelog.md
+    - Support: support.md
+    - License: license.md
+
+# Extensions
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      title: On this page
+
+  # Python Markdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: OsulivanAB
+      repo: SpectrumLootTool
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/mkdocs.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Plugins
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+  - git-committers:
+      repository: OsulivanAB/SpectrumLootTool
+      branch: main
+  - social:
+      cards_layout_options:
+        background_color: "#1e293b"
+        color: "#ffffff"
+  - tags:
+      tags_file: tags.md
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      slide_effect: slide
+      width: 100%
+      height: auto
+      zoomable: true
+      draggable: true
+
+# Extra configuration
+extra:
+  # Version information
+  version:
+    provider: mike
+    default: latest
+  
+  # Social links
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/OsulivanAB/SpectrumLootTool
+      name: GitHub Repository
+    - icon: fontawesome/solid/download
+      link: https://github.com/OsulivanAB/SpectrumLootTool/releases
+      name: Download Latest Release
+    - icon: simple/worldofwarcraft
+      link: https://worldofwarcraft.com
+      name: World of Warcraft
+  
+  # Analytics (optional)
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/emoticon-happy-outline
+          name: This page was helpful
+          data: 1
+          note: >-
+            Thanks for your feedback!
+        - icon: material/emoticon-sad-outline
+          name: This page could be improved
+          data: 0
+          note: >-
+            Thanks for your feedback! Help us improve this page by
+            <a href="https://github.com/OsulivanAB/SpectrumLootTool/issues/new/?title=[Feedback]+{title}+-+{url}" target="_blank" rel="noopener">telling us what you need</a>.
+
+  # Generator notice
+  generator: false
+
+# Custom CSS and JavaScript
+extra_css:
+  - assets/stylesheets/extra.css
+  - assets/stylesheets/wow-theme.css
+
+extra_javascript:
+  - assets/javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  - assets/javascripts/extra.js
+
+# Copyright
+copyright: |
+  &copy; 2024 <a href="https://github.com/OsulivanAB" target="_blank" rel="noopener">Spectrum Federation</a>

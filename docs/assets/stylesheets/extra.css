@@ -1,0 +1,204 @@
+/* Custom styles for Spectrum Loot Tool documentation */
+
+:root {
+  --spectrum-primary: #4f46e5;
+  --spectrum-secondary: #7c3aed;
+  --spectrum-accent: #f59e0b;
+  --spectrum-success: #10b981;
+  --spectrum-warning: #f59e0b;
+  --spectrum-error: #ef4444;
+}
+
+/* Hero section styling */
+.hero-banner {
+  background: linear-gradient(135deg, var(--spectrum-primary), var(--spectrum-secondary));
+  color: white;
+  padding: 4rem 2rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  border-radius: 0.5rem;
+}
+
+.hero-banner h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.hero-banner p {
+  font-size: 1.25rem;
+  opacity: 0.9;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Feature cards */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+.feature-card {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.feature-card .icon {
+  font-size: 2rem;
+  color: var(--spectrum-primary);
+  margin-bottom: 1rem;
+}
+
+/* Command examples */
+.command-example {
+  background: var(--md-code-bg-color);
+  border-left: 4px solid var(--spectrum-primary);
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 0 0.25rem 0.25rem 0;
+}
+
+.command-example code {
+  color: var(--spectrum-primary);
+  font-weight: 600;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.status-badge.success {
+  background: var(--spectrum-success);
+  color: white;
+}
+
+.status-badge.warning {
+  background: var(--spectrum-warning);
+  color: white;
+}
+
+.status-badge.error {
+  background: var(--spectrum-error);
+  color: white;
+}
+
+/* Installation steps */
+.install-steps {
+  counter-reset: step-counter;
+}
+
+.install-step {
+  counter-increment: step-counter;
+  position: relative;
+  padding-left: 3rem;
+  margin: 1.5rem 0;
+}
+
+.install-step::before {
+  content: counter(step-counter);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2rem;
+  height: 2rem;
+  background: var(--spectrum-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* WoW-specific styling */
+.wow-class-colors {
+  --death-knight: #C41E3A;
+  --demon-hunter: #A330C9;
+  --druid: #FF7C0A;
+  --evoker: #33937F;
+  --hunter: #AAD372;
+  --mage: #3FC7EB;
+  --monk: #00FF98;
+  --paladin: #F48CBA;
+  --priest: #FFFFFF;
+  --rogue: #FFF468;
+  --shaman: #0070DD;
+  --warlock: #8788EE;
+  --warrior: #C69B6D;
+}
+
+.guild-info {
+  background: linear-gradient(45deg, #1a1a2e, #16213e);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+.guild-info .guild-name {
+  color: var(--spectrum-accent);
+  font-weight: 600;
+}
+
+/* Copy button styling */
+.copy-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+}
+
+.copy-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 1);
+}
+
+/* Ensure pre blocks have space for copy button */
+pre {
+    padding-top: 3rem !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-banner h1 {
+    font-size: 2rem;
+  }
+  
+  .hero-banner p {
+    font-size: 1rem;
+  }
+  
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+}

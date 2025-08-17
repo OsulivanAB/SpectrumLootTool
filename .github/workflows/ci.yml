@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
 
@@ -12,13 +12,37 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for git plugins
     
-    - name: Install Lua for syntax checking
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install MkDocs and plugins
       run: |
-        sudo apt-get update
-        sudo apt-get install -y lua5.3 unzip curl
-        lua -v
-        luac -v
+        pip install \
+          mkdocs \
+          mkdocs-material \
+          mkdocs-minify-plugin \
+          mkdocs-git-revision-date-localized-plugin \
+          mkdocs-git-committers-plugin-2 \
+          mkdocs-social-plugin \
+          mkdocs-tags-plugin \
+          mkdocs-glightbox \
+          pillow \
+          cairosvg
+    
+    - name: Install Lua
+      run: sudo apt-get update && sudo apt-get install -y lua5.3
+    
+    - name: Validate MkDocs configuration
+      run: |
+        echo "Validating MkDocs configuration..."
+        mkdocs build --strict
+        
+        echo "MkDocs configuration validation passed"
     
     - name: Install StyLua for code formatting
       run: |

@@ -1,0 +1,154 @@
+/* World of Warcraft themed elements */
+
+/* Class color variables for consistent theming */
+:root {
+  --wow-death-knight: #C41E3A;
+  --wow-demon-hunter: #A330C9;
+  --wow-druid: #FF7C0A;
+  --wow-evoker: #33937F;
+  --wow-hunter: #AAD372;
+  --wow-mage: #3FC7EB;
+  --wow-monk: #00FF98;
+  --wow-paladin: #F48CBA;
+  --wow-priest: #FFFFFF;
+  --wow-rogue: #FFF468;
+  --wow-shaman: #0070DD;
+  --wow-warlock: #8788EE;
+  --wow-warrior: #C69B6D;
+  
+  /* WoW UI inspired colors */
+  --wow-gold: #FFD100;
+  --wow-rare: #0080FF;
+  --wow-epic: #A335EE;
+  --wow-legendary: #FF8000;
+  --wow-artifact: #E6CC80;
+}
+
+/* WoW-style tooltips */
+.wow-tooltip {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border: 2px solid var(--wow-gold);
+  border-radius: 8px;
+  padding: 0.75rem;
+  color: white;
+  font-family: 'Roboto Mono', monospace;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+}
+
+/* Item quality colors */
+.item-poor { color: #9d9d9d; }
+.item-common { color: #ffffff; }
+.item-uncommon { color: #1eff00; }
+.item-rare { color: var(--wow-rare); }
+.item-epic { color: var(--wow-epic); }
+.item-legendary { color: var(--wow-legendary); }
+.item-artifact { color: var(--wow-artifact); }
+
+/* WoW-style buttons */
+.wow-button {
+  background: linear-gradient(135deg, #4a4a4a 0%, #2d2d2d 100%);
+  border: 2px solid var(--wow-gold);
+  color: var(--wow-gold);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.wow-button:hover {
+  background: linear-gradient(135deg, #5a5a5a 0%, #3d3d3d 100%);
+  border-color: #fff;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Guild rank styling */
+.guild-rank {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.guild-rank.officer {
+  background: var(--wow-legendary);
+  color: white;
+}
+
+.guild-rank.member {
+  background: var(--wow-uncommon);
+  color: white;
+}
+
+/* Loot tracking elements */
+.loot-tracker {
+  background: rgba(0,0,0,0.8);
+  border: 1px solid var(--wow-gold);
+  border-radius: 6px;
+  padding: 1rem;
+  color: white;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.roll-count {
+  color: var(--wow-gold);
+  font-weight: 600;
+  font-size: 1.2em;
+}
+
+/* Raid frame styling */
+.raid-frame {
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+  border: 2px solid rgba(255, 209, 0, 0.6);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+/* Class-specific styling for player names */
+.player-death-knight { color: var(--wow-death-knight); }
+.player-demon-hunter { color: var(--wow-demon-hunter); }
+.player-druid { color: var(--wow-druid); }
+.player-evoker { color: var(--wow-evoker); }
+.player-hunter { color: var(--wow-hunter); }
+.player-mage { color: var(--wow-mage); }
+.player-monk { color: var(--wow-monk); }
+.player-paladin { color: var(--wow-paladin); }
+.player-priest { color: var(--wow-priest); }
+.player-rogue { color: var(--wow-rogue); }
+.player-shaman { color: var(--wow-shaman); }
+.player-warlock { color: var(--wow-warlock); }
+.player-warrior { color: var(--wow-warrior); }
+
+/* Command output styling */
+.command-output {
+  background: #0c0c0c;
+  color: #00ff00;
+  padding: 1rem;
+  border-radius: 4px;
+  font-family: 'Roboto Mono', monospace;
+  border-left: 4px solid var(--wow-gold);
+  margin: 1rem 0;
+}
+
+.command-output .timestamp {
+  color: #888;
+  font-size: 0.9em;
+}
+
+.command-output .success {
+  color: #00ff00;
+}
+
+.command-output .error {
+  color: #ff0000;
+}
+
+.command-output .warning {
+  color: #ffff00;
+}

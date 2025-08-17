@@ -104,6 +104,18 @@ jobs:
           echo "Release $VERSION" > release_notes.txt
         fi
     
+    - name: Detect if pre-release
+      id: prerelease_check
+      run: |
+        VERSION="${{ steps.extract_version.outputs.version }}"
+        if [[ "$VERSION" =~ (-alpha|-beta|-rc|-pre|-preview|-dev) ]]; then
+          echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          echo "This is a pre-release version: $VERSION"
+        else
+          echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          echo "This is a stable release version: $VERSION"
+        fi
+    
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -111,6 +123,6 @@ jobs:
         body_path: release_notes.txt
         files: ./SpectrumLootTool-${{ steps.extract_version.outputs.version }}.zip
         draft: false
-        prerelease: false
+        prerelease: ${{ steps.prerelease_check.outputs.is_prerelease }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

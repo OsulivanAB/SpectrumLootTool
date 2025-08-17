@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2 - GitHub Pages Documentation Deployment
+
+### 🚀 **Infrastructure**
+- **GitHub Pages Integration**: Added automated MkDocs deployment to GitHub Pages
+- **Documentation Hosting**: Documentation is now automatically deployed to GitHub Pages on every merge to main
+- **CI/CD Workflow**: New GitHub Actions workflow for building and deploying MkDocs site
+- **Public Documentation Access**: Users can now access documentation at the project's GitHub Pages URL
+
+### 🔧 **Technical Improvements**
+- Enhanced development workflow with automated documentation deployment
+- Improved documentation accessibility for end users and developers
+
 ## 0.3.1 - Documentation Enhancement
 
 ### 📚 **Documentation**

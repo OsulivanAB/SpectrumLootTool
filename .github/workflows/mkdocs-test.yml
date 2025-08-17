@@ -1,0 +1,46 @@
+name: Test MkDocs Build
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/mkdocs-test.yml'
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs mkdocs-material mkdocs-awesome-pages-plugin
+
+      - name: Test MkDocs build
+        run: |
+          echo "Testing MkDocs build for PR validation..."
+          mkdocs build --verbose
+
+      - name: Validate build output
+        run: |
+          if [ ! -d "site" ]; then
+            echo "❌ Error: MkDocs build failed - site directory not created"
+            exit 1
+          fi
+          
+          if [ ! -f "site/index.html" ]; then
+            echo "❌ Error: MkDocs build failed - index.html not found"
+            exit 1
+          fi
+          
+          echo "✅ MkDocs build validation passed"
+          echo "📁 Generated files:"
+          find site -name "*.html" | head -10

@@ -90,13 +90,13 @@ function SLH:UpdateRoster()
 
 	local players = {}
 	local useAllPlayers = self.db.settings.showAllPlayers
-	
+
 	if useAllPlayers then
 		-- Show all known players from database
 		players = self:GetAllKnownPlayers()
 		self.Debug:LogDebug("UI", "Using all known players from database", {
 			playerCount = #players,
-			showAllPlayers = useAllPlayers
+			showAllPlayers = useAllPlayers,
 		})
 	elseif IsInRaid() then
 		local raidSize = GetNumGroupMembers()
@@ -232,7 +232,8 @@ function SLH:UpdateRoster()
 		visiblePlayers = #players,
 		hiddenRows = hiddenCount,
 		newFrameHeight = newHeight,
-		groupType = useAllPlayers and "all-known-players" or (IsInRaid() and "raid" or (IsInGroup() and "party" or "solo")),
+		groupType = useAllPlayers and "all-known-players"
+			or (IsInRaid() and "raid" or (IsInGroup() and "party" or "solo")),
 		showAllPlayers = useAllPlayers,
 	})
 end

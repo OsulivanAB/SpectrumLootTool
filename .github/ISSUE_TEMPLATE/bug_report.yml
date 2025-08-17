@@ -1,0 +1,161 @@
+name: 🚨 Bug Report
+description: Create a report to help us improve SpectrumLootTool
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🚨 Debug Log Required
+        **Debug logs are REQUIRED for all bug reports. Issues without debug logs will be closed.**
+        
+        ### How to get debug logs:
+        1. **Enable debug logging**: Type `/slh debuglog on` in WoW chat
+        2. **Reproduce the issue**: Perform the actions that cause the bug
+        3. **Export debug data**: Type `/slh debuglog export` in WoW chat
+        4. **Copy the exported data**: Check your WoW installation folder for the debug file or copy from chat
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: Describe the bug clearly and concisely
+      placeholder: A clear description of what the bug is and what you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Provide detailed steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Use command '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What should happen instead?
+      placeholder: A clear description of what you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: Describe what actually occurred when you encountered the bug
+    validations:
+      required: true
+
+  - type: input
+    id: wow-version
+    attributes:
+      label: WoW Version
+      description: Check your WoW version
+      placeholder: e.g., 10.2.5, 11.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: addon-version
+    attributes:
+      label: Addon Version
+      description: Check `/slh status` command or the TOC file
+      placeholder: e.g., 0.3.3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: group-type
+    attributes:
+      label: Group Type When Issue Occurred
+      description: What type of group were you in when the issue happened?
+      options:
+        - Solo
+        - Party
+        - Raid
+        - Not applicable
+    validations:
+      required: true
+
+  - type: input
+    id: guild-name
+    attributes:
+      label: Guild Name
+      description: What guild are you in?
+      placeholder: e.g., Spectrum Federation
+
+  - type: input
+    id: officer-status
+    attributes:
+      label: Officer Status
+      description: Use `/slh status` to check your officer status
+      placeholder: e.g., Officer (Rank 1), Member (Rank 5), etc.
+
+  - type: textarea
+    id: other-addons
+    attributes:
+      label: Other Addons
+      description: List any other addons you have installed that might be relevant
+      placeholder: List other installed addons that might interact with SpectrumLootTool
+
+  - type: textarea
+    id: debug-logs
+    attributes:
+      label: Debug Information (REQUIRED)
+      description: Paste your debug logs from `/slh debuglog export` command
+      placeholder: |
+        Debug logs from `/slh debuglog export` command:
+        (Paste the exported debug content here)
+        
+        If the export is very long, you can save it as a text file and attach it to this issue.
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots/Error Messages
+      description: If applicable, add screenshots or error messages
+      placeholder: |
+        - Screenshot of the issue
+        - Any error messages from WoW's error display
+        - Chat output showing the problem
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+      placeholder: |
+        - Were you in combat when this occurred?
+        - Did this happen multiple times or just once?
+        - Any recent changes to your setup?
+        - Anything else that might be relevant?
+
+  - type: checkboxes
+    id: final-checklist
+    attributes:
+      label: Final Checklist
+      description: Please confirm you have completed these steps
+      options:
+        - label: I have enabled debug logging with `/slh debuglog on`
+          required: true
+        - label: I have reproduced the issue
+          required: true
+        - label: I have exported debug logs with `/slh debuglog export`
+          required: true
+        - label: I have included the debug information above
+          required: true
+        - label: I have provided clear steps to reproduce
+          required: true
+        - label: I understand that issues without debug logs will be closed
+          required: true

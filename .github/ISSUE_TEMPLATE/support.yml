@@ -1,0 +1,119 @@
+name: 🆘 Quick Support
+description: For simple questions or common issues with SpectrumLootTool
+title: "[SUPPORT] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Quick Issue Check
+        **Before submitting, please check these common solutions:**
+        
+        ### ✅ Common Issues & Solutions
+        - **Addon not showing**: Make sure you're in a raid group and not in combat
+        - **No adjustment buttons**: Check that you're an officer (rank 0-2) in "Spectrum Federation" guild
+        - **Commands not working**: Try `/slh help` to see all available commands
+        - **Data not syncing**: Use `/slh refresh` to refresh officer status
+        
+        ### ✅ Debug Commands for Self-Help
+        - **Check status**: `/slh status` - Shows addon version, guild, officer status
+        - **Refresh addon**: `/slh refresh` - Refreshes officer status and UI
+        - **Enable debug**: `/slh debuglog on` - Enables detailed logging
+        - **View recent logs**: `/slh debuglog show 10` - Shows last 10 debug entries
+
+  - type: checkboxes
+    id: tried-solutions
+    attributes:
+      label: What have you tried?
+      description: Please check all that apply
+      options:
+        - label: I checked if I'm in a raid group
+        - label: I verified I'm an officer in Spectrum Federation guild
+        - label: I tried `/slh refresh`
+        - label: I checked `/slh status` output
+        - label: I tried the debug commands listed above
+        - label: I checked the documentation/README
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What type of issue are you experiencing?
+      options:
+        - Addon not showing up
+        - Commands not working
+        - Officer buttons not visible
+        - Data not syncing between players
+        - UI/Display problems
+        - Installation/Setup help
+        - How to use a feature
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Describe Your Issue
+      description: What's not working or what do you need help with?
+      placeholder: Describe what's not working or what you need help with
+    validations:
+      required: true
+
+  - type: input
+    id: wow-version-support
+    attributes:
+      label: WoW Version
+      placeholder: e.g., 10.2.5, 11.0.0
+
+  - type: input
+    id: addon-version-support
+    attributes:
+      label: Addon Version
+      description: From `/slh status` command
+      placeholder: e.g., 0.3.3
+
+  - type: input
+    id: guild-name-support
+    attributes:
+      label: Guild Name
+      placeholder: e.g., Spectrum Federation
+
+  - type: input
+    id: officer-status-support
+    attributes:
+      label: Officer Status
+      description: From `/slh status` command
+      placeholder: e.g., Officer (Rank 1), Member (Rank 5), etc.
+
+  - type: textarea
+    id: slh-status-output
+    attributes:
+      label: Output from `/slh status`
+      description: Copy and paste the complete output from the `/slh status` command
+      placeholder: |
+        Paste the complete output from `/slh status` here
+        This helps us understand your configuration
+
+  - type: textarea
+    id: additional-details
+    attributes:
+      label: Additional Details
+      description: Any other information that might be helpful
+      placeholder: Any other information that might be helpful
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Note**: If you're experiencing crashes, errors, or complex bugs, please use the "Bug Report" template instead and include debug logs.
+
+  - type: checkboxes
+    id: escalation-check
+    attributes:
+      label: Issue Complexity
+      description: Help us route your issue correctly
+      options:
+        - label: This is a simple question or common issue
+        - label: I've tried the suggested solutions above
+        - label: This might need to be escalated to a bug report if not resolved

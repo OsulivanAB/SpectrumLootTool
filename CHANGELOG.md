@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.1 - Documentation Enhancement
+
+### 📚 **Documentation**
+- **Database System Guide**: Added comprehensive documentation for the database system
+- **In-Game Commands**: Complete reference for all database-related slash commands
+- **Developer API**: Detailed API documentation for addon developers and integrations
+- **Data Structure**: Full specification of player entry schema and equipment slots
+- **Troubleshooting**: User guides for common issues and performance optimization
+- **MkDocs Integration**: Updated site navigation to include database documentation
+
+### 🔧 **Technical Improvements**
+- Enhanced mkdocs.yml configuration for better documentation organization
+- Improved user accessibility to database features and functionality
+
 ## 0.3.0 - Complete Database Module Implementation
 
 ### 🎯 **Major Features**

@@ -1,9 +1,9 @@
-name: Release
+name: Release (Stable & Pre-release)
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*'  # Triggers for all version tags (stable: v1.0.0, pre-release: v1.0.0-beta.1)
 
 jobs:
   release:
@@ -110,16 +110,18 @@ jobs:
         VERSION="${{ steps.extract_version.outputs.version }}"
         if [[ "$VERSION" =~ (-alpha|-beta|-rc|-pre|-preview|-dev) ]]; then
           echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          echo "release_title=SpectrumLootTool $VERSION (Pre-release)" >> $GITHUB_OUTPUT
           echo "This is a pre-release version: $VERSION"
         else
           echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          echo "release_title=SpectrumLootTool $VERSION" >> $GITHUB_OUTPUT
           echo "This is a stable release version: $VERSION"
         fi
     
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        name: SpectrumLootTool ${{ steps.extract_version.outputs.version }}
+        name: ${{ steps.prerelease_check.outputs.release_title }}
         body_path: release_notes.txt
         files: ./SpectrumLootTool-${{ steps.extract_version.outputs.version }}.zip
         draft: false

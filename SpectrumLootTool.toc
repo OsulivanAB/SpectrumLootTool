@@ -13,4 +13,5 @@ Core.lua
 Database.lua
 Log.lua
 Debug.lua
+Logging.lua
 UI.lua

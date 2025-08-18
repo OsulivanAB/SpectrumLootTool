@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.4.0 - Audit Logging System
+
+### ✨ **New Features**
+
+- **Audit Logging System**: Complete structured logging system for officer actions with comprehensive tracking
+- **Officer Permission Gating**: Role-based access control using existing guild rank system (rank ≤ 2)
+- **Unique Log ID Generation**: Hash-based identifiers with collision detection for reliable log entry tracking
+- **Log Entry Management**: Create, retrieve, and delete audit log entries with full validation and error handling
+
+### 🔧 **Technical Improvements**
+
+- **Performance Optimization**: Cached player information, server names, and officer status with intelligent cache management
+- **Database Integration**: Persistent storage in `SpectrumLootHelperDB.auditLog` with version tracking for future migrations
+- **Comprehensive Testing**: Integration tests, functionality verification, and performance monitoring with detailed reporting
+- **Error Handling**: Protected API calls with graceful degradation and comprehensive error logging throughout
+
+### 🎯 **User Experience**
+
+- **Combat-Aware Operations**: Reduced debug logging during combat scenarios for optimal gameplay performance
+- **Memory Management**: Storage optimization features with configurable entry limits and automatic cleanup
+- **Debug Integration**: Seamless integration with existing SLH.Debug system using "Logging" component identifier
+- **Comprehensive Validation**: Parameter validation for field types ("Venari Charges"/"Gear Slot") and change values
+
+### 🚀 **Infrastructure**
+
+- **GitHub Actions Enhancement**: Improved release workflow with pre-release detection and better version handling
+- **Core Integration**: Automatic initialization of logging system during addon startup with success tracking
+
 ## 0.3.4 - Enhanced Issue Reporting System
 
 ### ✨ **New Features**

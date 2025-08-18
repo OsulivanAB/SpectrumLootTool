@@ -36,9 +36,9 @@ function SLH:Init()
 	if self.Logging then
 		local logInitSuccess = self.Logging:Init()
 		if self.Debug then
-			self.Debug:LogInfo("Core", "Logging system initialization result", { 
+			self.Debug:LogInfo("Core", "Logging system initialization result", {
 				success = logInitSuccess,
-				version = self.Logging.version 
+				version = self.Logging.version,
 			})
 		end
 		self.Debug:LogInfo("Core", "Debug system fully implemented with performance optimization", {
